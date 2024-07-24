@@ -269,7 +269,7 @@ results
 # no need to check trial end, as manually set in function above
 
 #### Data for models ####
-# add latencies
+# add latencies and time in ZOI
 metrics_data <- combined_data %>%
   group_by(chick_id, trial_day, enclosure, trial_type, trial_category) %>%
   summarize(
@@ -288,7 +288,6 @@ metrics_data <- combined_data %>%
 
 
 # add object
-
 #this is the test schedule
 schedule <- data.frame(
   Day_Cage = c("Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7", "Day 8", "Day 9", "Day 10", "Day 11", "Day 12", "Day 13", "Day 14", "Day 15", "Day 16", "Day 17"),
@@ -302,7 +301,7 @@ schedule <- data.frame(
   B9 = c(NA, NA, NA, NA, NA, NA, NA, NA, NA, "IT1 - 1", "GC1 - 4", "IC1 - 4", "GT1 - 5", "IT2 - 2", "GC2 - 4", "IC2 - 4", "GT2 - 3")
 )
 
-
+# format schedule for data extraction
 data_long <- schedule %>%
   pivot_longer(cols = starts_with("B"), names_to = "enclosure", values_to = "Trial") %>%
   filter(!is.na(Trial) & Trial != "") %>%
@@ -311,9 +310,34 @@ data_long <- schedule %>%
   mutate(trial_day = as.character(row_number())) %>%
   ungroup()
 
-# Merge the object type data with the metrics data
+# merge the object type data with the metrics data
 metrics_data <- metrics_data %>%
   left_join(data_long, by = c("enclosure", "trial_day")) %>%
   select(chick_id, trial_day, enclosure, trial_type, trial_category, latency_to_enter, latency_to_eat, zoi_duration, Object_Type)
 
+# add the groupID and nestID
+metrics_data <- metrics_data %>%
+  left_join(select(chick_data, chick_id, rr_grp, egg_id), by = "chick_id") %>%
+  mutate(
+    GroupID = ifelse(trial_category == "individual", NA, rr_grp),
+    NestID = substr(egg_id, 1, nchar(egg_id) - 1)
+  ) %>%
+  select(-rr_grp, -egg_id)
 
+# rename columns to be consistent with RR
+metrics_data <- metrics_data %>%
+  rename(
+    Latency_to_Eat = latency_to_eat,
+    Object = trial_type,
+    Trial = trial_day,
+    Context = trial_category,
+    Bird_ID = chick_id,
+    Latency_to_enter = latency_to_enter,
+    Zoi_duration = zoi_duration,
+    Enclosure = enclosure
+  )
+
+metrics_data
+
+
+write.csv(metrics_data, "neophobia_data.csv")
