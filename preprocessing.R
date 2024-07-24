@@ -194,7 +194,10 @@ group_data_common <- group_data %>% select(all_of(common_columns))
 
 # combine the data frames
 combined_data <- rbind(individual_data_common, group_data_common) %>% 
-  select(-Test_arena_entry_time)
+  select(-Test_arena_entry_time) %>%
+  mutate(trial_category = ifelse(Observation_id %in% unique(group_data$Observation_id), "group", "individual"))
+
+
 
 #### Check data structure ####
 
@@ -264,5 +267,53 @@ for (i in seq_len(nrow(unique_combinations))) {
 results
 
 # no need to check trial end, as manually set in function above
+
+#### Data for models ####
+# add latencies
+metrics_data <- combined_data %>%
+  group_by(chick_id, trial_day, enclosure, trial_type, trial_category) %>%
+  summarize(
+    trial_start_time = min(Start__s_[Behavior == "Trial start"], na.rm = TRUE),
+    entry_time = ifelse(any(Behavior == "Test arena entry"), min(Start__s_[Behavior == "Test arena entry"], na.rm = TRUE), NA),
+    eating_time = ifelse(any(Behavior == "Eating"), min(Start__s_[Behavior == "Eating"], na.rm = TRUE), NA),
+    zoi_duration = sum(Stop__s_[Behavior == "Zone of Interest"] - Start__s_[Behavior == "Zone of Interest"], na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  mutate(
+    latency_to_enter = ifelse(is.na(entry_time), 600, entry_time - trial_start_time),
+    latency_to_eat = ifelse(is.na(eating_time), 600, eating_time - entry_time),
+    zoi_duration = replace_na(zoi_duration, 0)
+  ) %>%
+  select(chick_id, trial_day, enclosure, trial_type, trial_category, latency_to_enter, latency_to_eat, zoi_duration)
+
+
+# add object
+
+#this is the test schedule
+schedule <- data.frame(
+  Day_Cage = c("Day 1", "Day 2", "Day 3", "Day 4", "Day 5", "Day 6", "Day 7", "Day 8", "Day 9", "Day 10", "Day 11", "Day 12", "Day 13", "Day 14", "Day 15", "Day 16", "Day 17"),
+  B2 = c("GC1 - 1", "IC1 - 1", "GT1 - 4", "IT1 - 3", "GC2 - 1", "IC2 - 1", "GT2 - 2", "IT2 - 5", NA, NA, NA, NA, NA, NA, NA, NA, NA),
+  B3 = c("IC1 - 2", "GT1 - 4", "IT1 - 1", "GC1 - 2", "IC2 - 2", "GT2 - 5", "IT2 - 3", "GC2 - 2", NA, NA, NA, NA, NA, NA, NA, NA, NA),
+  B4 = c(NA, NA, NA, "GT1 - 5", "IT1 - 1", "GC1 - 3", "IC1 - 3", "GT2 - 4", "IT2 - 2", "GC2 - 3", "IC2 - 3", NA, NA, NA, NA, NA, NA),
+  B5 = c(NA, NA, NA, "IT1 - 1", "GC1 - 4", "IC1 - 4", "GT1 - 3", "IT2 - 2", "GC2 - 4", "IC2 - 4", "GT2 - 5", NA, NA, NA, NA, NA, NA),
+  B6 = c(NA, NA, NA, NA, NA, NA, "GC1 - 1", "IC1 - 1", "GT1 - 2", "IT1 - 3", "GC2 - 1", "IC2 - 1", "GT2 - 4", "IT2 - 5", NA, NA, NA),
+  B7 = c(NA, NA, NA, NA, NA, NA, "IC1 - 2", "GT1 - 3", "IT1 - 4", "GC1 - 2", "IC2 - 2", "GT2 - 5", "IT2 - 1", "GC2 - 2", NA, NA, NA),
+  B8 = c(NA, NA, NA, NA, NA, NA, NA, NA, NA, "GT1 - 2", "IT1 - 4", "GC1 - 3", "IC1 - 3", "GT2 - 1", "IT2 - 5", "GC2 - 3", "IC2 - 3"),
+  B9 = c(NA, NA, NA, NA, NA, NA, NA, NA, NA, "IT1 - 1", "GC1 - 4", "IC1 - 4", "GT1 - 5", "IT2 - 2", "GC2 - 4", "IC2 - 4", "GT2 - 3")
+)
+
+
+data_long <- schedule %>%
+  pivot_longer(cols = starts_with("B"), names_to = "enclosure", values_to = "Trial") %>%
+  filter(!is.na(Trial) & Trial != "") %>%
+  mutate(Object_Type = as.integer(sub(".* - ", "", Trial))) %>%
+  group_by(enclosure) %>%
+  mutate(trial_day = as.character(row_number())) %>%
+  ungroup()
+
+# Merge the object type data with the metrics data
+metrics_data <- metrics_data %>%
+  left_join(data_long, by = c("enclosure", "trial_day")) %>%
+  select(chick_id, trial_day, enclosure, trial_type, trial_category, latency_to_enter, latency_to_eat, zoi_duration, Object_Type)
 
 
