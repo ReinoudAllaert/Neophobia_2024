@@ -1,11 +1,10 @@
 #### load/install packages ####
 
-install.packages(c('dplyr', 'stringr', 'tidyr', 'here',
+install.packages(c('stringr', 'tidyverse', 'here',
                    'lubridate', 'readxl', 'purrr'))
 
-library(dplyr)
+
 library(stringr)
-library(tidyr)
 library(here)
 library(lubridate)
 library(readxl)

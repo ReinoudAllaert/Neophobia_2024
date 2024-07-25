@@ -1,7 +1,13 @@
+#### load/install packages ####
+
+install.packages(c('lmerTest', 'lme4', 'ggplot2', 'tidyverse',
+                   'summarytools', 'readxl', 'purrr'))
+
+
 library(lmerTest)
 library(lme4)
 library(ggplot2)
-library(tidyr)
+library(tidyverse)
 library(summarytools)
 
 data <- read.csv("neophobia_data.csv", row.names=1)
