@@ -1,14 +1,13 @@
 #### load/install packages ####
 
-install.packages(c('lmerTest', 'lme4', 'ggplot2', 'tidyverse',
-                   'summarytools', 'readxl', 'purrr'))
-
-
+install.packages(c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'summarytools', 'readxl', 'purrr', 'performance', 'emmeans'))
 library(lmerTest)
 library(lme4)
 library(ggplot2)
 library(tidyverse)
 library(summarytools)
+library(performance)
+library(emmeans)
 
 data <- read.csv("neophobia_data.csv", row.names=1)
 
@@ -23,7 +22,7 @@ dfSummary(data)
 # currently coded as NA
 
 # if we want 0, just change NA to 0
-data$GroupID[is.na(data$GroupID)] <- "0"
+#data$GroupID[is.na(data$GroupID)] <- "0"
 
 # if we want the actual group, lookup groupID per bird
  most_frequent_group <- function(group_ids) {
@@ -42,7 +41,7 @@ data <- data %>%
   mutate(GroupID = ifelse(is.na(GroupID), most_frequent_group, GroupID)) %>%
   select(-most_frequent_group)
 
-# this works
+# basic model to try
 model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
                 (1 | Bird_ID), 
               data = data)
@@ -52,11 +51,40 @@ summary(model)
 
 # as described in RR
 # random effect structure too complicated for amount of data?
-RR_model <- lmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
+enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
                 (1 | NestID) + 
                 (1 + group_dummy | GroupID) + 
                 (1 + ind_dummy + group_dummy | Bird_ID), 
               data = data)
 
-summary(RR_model)
+summary(enter_model)
+check_model(enter_model)
+
+
+eat_model <- lmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
+                   (1 | NestID) + 
+                   (1 + group_dummy | GroupID) + 
+                   (1 + ind_dummy + group_dummy | Bird_ID), 
+                 data = data)
+
+summary(eat_model)
+check_model(eat_model)
+
+emm_eat <- emmeans(eat_model, ~ Object_contrast * Context_contrast)
+pairs(emm_eat, adjust = "bonferroni")
+
+zoi_model <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
+                    (1 | NestID) + 
+                    (1 + group_dummy | GroupID) + 
+                    (1 + ind_dummy + group_dummy | Bird_ID), 
+                  data = data)
+
+summary(zoi_model)
+check_model(zoi_model)
+
+# in RR we also mention analysing latencies combined
+
+multivariate_model <- still to code
+
+
 
