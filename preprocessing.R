@@ -5,6 +5,7 @@ install.packages(c('stringr', 'tidyverse', 'here',
 
 
 library(stringr)
+library(tidyverse)
 library(here)
 library(lubridate)
 library(readxl)

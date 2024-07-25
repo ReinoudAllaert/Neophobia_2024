@@ -84,7 +84,7 @@ check_model(zoi_model)
 
 # in RR we also mention analysing latencies combined
 
-multivariate_model <- still to code
+multivariate_model 
 
 
 
