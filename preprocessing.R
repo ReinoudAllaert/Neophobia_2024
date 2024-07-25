@@ -1,12 +1,7 @@
 #### load/install packages ####
 
-install.packages('dplyr')
-install.packages('stringr')
-install.packages('tidyr')
-install.packages('here')
-install.packages('lubridate')
-install.packages('readxl')
-install.packages('purrr')
+install.packages(c('dplyr', 'stringr', 'tidyr', 'here',
+                   'lubridate', 'readxl', 'purrr'))
 
 library(dplyr)
 library(stringr)
@@ -335,6 +330,21 @@ metrics_data <- metrics_data %>%
     Latency_to_enter = latency_to_enter,
     Zoi_duration = zoi_duration,
     Enclosure = enclosure
+  ) %>%
+  mutate(group_dummy = if_else(Context == "group", 1, 0),
+         ind_dummy  = if_else(Context == "individual", 1, 0))
+
+# Add contrast coding as described in RR
+metrics_data <- metrics_data %>%
+  mutate(
+    Object_contrast = case_when(
+      Object == "control" ~ -0.5,   
+      Object == "novel" ~ 0.5    
+    ),
+    Context_contrast = case_when(
+      Context == "group" ~ 0.5,
+      TRUE ~ -0.5                          
+    )
   )
 
 metrics_data
