@@ -28,6 +28,12 @@ data <- rbind(data_1, data_2)
 # Both experimenters coded the same day, remove those once
 data <- data %>% filter(Observation.id != "B2_3_A_novel_SK")
 
+# Select trials for doublecoding
+
+set.seed(0)
+doublecode <- sample(unique(data$Observation.id), 0.2*length(unique(data$Observation.id)))
+write.csv(doublecode, "videos_for_doublecoding.csv")
+
 # remove NA cols, remove .mp4
 data <- data %>%
   select_if(~any(!is.na(.))) %>%
