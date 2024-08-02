@@ -9,8 +9,11 @@ library(summarytools)
 library(performance)
 library(emmeans)
 
-data <- read.csv("neophobia_data.csv", row.names=1)
+data <- read.csv("Neophobia_2024/neophobia_data.csv", row.names=1)
 
+
+
+##### just adding a line here 
 
 # quick look at structure
 str(data)
