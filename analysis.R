@@ -10,8 +10,6 @@ library(performance)
 library(emmeans)
 
 data <- read.csv("neophobia_data.csv", row.names=1)
-data2 <- data %>%
-  filter(!Bird_ID %in% chick_ids_starting_with_L$chick_id)
 
 ##### just adding a line here 
 

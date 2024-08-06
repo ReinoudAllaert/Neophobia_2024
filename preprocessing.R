@@ -198,6 +198,29 @@ combined_data <- rbind(individual_data_common, group_data_common) %>%
   select(-Test_arena_entry_time) %>%
   mutate(trial_category = ifelse(Observation_id %in% unique(group_data$Observation_id), "group", "individual"))
 
+# remove ZOI after trial end
+adjust_zoi_events <- function(df) {
+  df %>%
+    group_by(Observation_id) %>%
+    # Determine the trial end time for each observation
+    mutate(trial_end_time = min(Start__s_[Behavior == "Trial end"], na.rm = TRUE)) %>%
+    # Adjust Stop__s_ for ZOI events overlapping trial end
+    mutate(
+      Stop__s_ = ifelse(
+        Behavior == "Zone of Interest" & Stop__s_ > trial_end_time,
+        trial_end_time,
+        Stop__s_
+      )
+    ) %>%
+    # Remove events starting after trial end
+    filter(!(Behavior == "Zone of Interest" & Start__s_ >= trial_end_time)) %>%
+    ungroup() %>%
+    select(-trial_end_time) # Remove the temporary column
+}
+
+# Apply the function to the combined dataset
+combined_data <- adjust_zoi_events(combined_data)
+
 
 
 #### Check data structure ####
