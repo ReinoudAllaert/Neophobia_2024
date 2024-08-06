@@ -9,9 +9,9 @@ library(summarytools)
 library(performance)
 library(emmeans)
 
-data <- read.csv("Neophobia_2024/neophobia_data.csv", row.names=1)
-
-
+data <- read.csv("neophobia_data.csv", row.names=1)
+data2 <- data %>%
+  filter(!Bird_ID %in% chick_ids_starting_with_L$chick_id)
 
 ##### just adding a line here 
 
@@ -39,6 +39,7 @@ most_frequent_group_per_bird <- data %>%
   group_by(Bird_ID) %>%
   summarize(most_frequent_group = most_frequent_group(GroupID)) %>%
   ungroup()
+
 data <- data %>%
   left_join(most_frequent_group_per_bird, by = "Bird_ID") %>%
   mutate(GroupID = ifelse(is.na(GroupID), most_frequent_group, GroupID)) %>%
