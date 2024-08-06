@@ -1,3 +1,7 @@
+library(irr)
+library(dplyr)
+
+
 # Check IRR between coders
 
 #### data ####
@@ -309,6 +313,55 @@ metrics_data <- metrics_data %>%
   )
 
 metrics_data
-
-
 write.csv(metrics_data, "neophobia_data_IRR.csv")
+
+
+#################
+
+# Filter the datasets to include only the observations coded by both observers
+filtered_metrics_data <- metrics_data %>%
+  select(Bird_ID, Trial, Latency_to_enter, Latency_to_Eat, Zoi_duration)
+
+filtered_data <- data %>%
+  select(Bird_ID, Trial, Latency_to_enter, Latency_to_Eat, Zoi_duration)
+
+# Merge datasets on Bird_ID and Trial
+combined_data <- merge(filtered_metrics_data, filtered_data, by = c("Bird_ID", "Trial"), suffixes = c("_metrics", "_data"))
+
+# Calculate ICC for Latency_to_enter
+icc_latency_to_enter <- icc(combined_data[, c("Latency_to_enter_metrics", "Latency_to_enter_data")], model = "twoway", type = "agreement", unit = "single")
+
+# Calculate ICC for Latency_to_Eat
+icc_latency_to_eat <- icc(combined_data[, c("Latency_to_Eat_metrics", "Latency_to_Eat_data")], model = "twoway", type = "agreement", unit = "single")
+
+# Calculate ICC for Zoi_duration
+icc_zoi_duration <- icc(combined_data[, c("Zoi_duration_metrics", "Zoi_duration_data")], model = "twoway", type = "agreement", unit = "single")
+
+# Display ICC results
+print(icc_latency_to_enter)
+print(icc_latency_to_eat)
+print(icc_zoi_duration)
+
+
+
+
+# Define the acceptable deviation thresholds
+latency_threshold <- 1.5  # 1 second for latencies
+zoi_threshold <- 5      # 5 seconds for Zoi_duration
+
+# Calculate absolute differences and identify problematic observations
+problematic_observations <- combined_data %>%
+  mutate(
+    Difference_Latency_to_enter = abs(Latency_to_enter_metrics - Latency_to_enter_data),
+    Difference_Latency_to_eat = abs(Latency_to_Eat_metrics - Latency_to_Eat_data),
+    Difference_Zoi_duration = abs(Zoi_duration_metrics - Zoi_duration_data)
+  ) %>%
+  filter(
+    Difference_Latency_to_enter > latency_threshold |
+      Difference_Latency_to_eat > latency_threshold |
+      Difference_Zoi_duration > zoi_threshold
+  ) %>%
+  select(Bird_ID, Trial, Difference_Latency_to_enter, Difference_Latency_to_eat, Difference_Zoi_duration)
+
+# Print the problematic observations
+print(problematic_observations)
