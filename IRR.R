@@ -1,6 +1,8 @@
 library(irr)
 library(dplyr)
 library(readxl)
+library(stringr)
+library(tidyr)
 
 # Check IRR between coders
 
@@ -372,3 +374,4 @@ icc_zoi_duration <- irr::icc(combined_data[, c("Zoi_duration_metrics", "Zoi_dura
 print(icc_latency_to_enter)
 print(icc_latency_to_eat)
 print(icc_zoi_duration)
+
