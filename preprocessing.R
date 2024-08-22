@@ -1,5 +1,5 @@
 #### load/install packages ####
-packages <- c('stringr', 'tidyverse', 'here', 'lubridate', 'readxl', 'purrr')
+packages <- c('stringr', 'tidyverse', 'here', 'lubridate', 'readxl', 'purrr', 'summarytools')
 for (pkg in packages) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     install.packages(pkg)
@@ -18,6 +18,12 @@ chick_data <- chick_data %>%
 data_1 <- read.csv("BORIS_SK.csv")
 data_2 <- read.csv("BORIS_RA.csv")
 data <- rbind(data_1, data_2)
+
+# quick look at structure
+str(data)
+summary(data)
+dfSummary(data)
+
 
 #### preprocess BORIS data ####
 
@@ -374,5 +380,7 @@ metrics_data <- metrics_data %>%
 
 metrics_data
 
-
 write.csv(metrics_data, "neophobia_data.csv")
+
+rm(list = ls())
+
