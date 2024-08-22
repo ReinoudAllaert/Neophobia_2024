@@ -1,13 +1,12 @@
-#### load/install packages ####
+packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'summarytools', 'readxl', 'purrr', 'performance', 'emmeans')
 
-install.packages(c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'summarytools', 'readxl', 'purrr', 'performance', 'emmeans'))
-library(lmerTest)
-library(lme4)
-library(ggplot2)
-library(tidyverse)
-library(summarytools)
-library(performance)
-library(emmeans)
+# Check if each package is installed; if not, install it
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
 
 data <- read.csv("neophobia_data.csv", row.names=1)
 

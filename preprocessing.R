@@ -1,15 +1,11 @@
 #### load/install packages ####
-
-install.packages(c('stringr', 'tidyverse', 'here',
-                   'lubridate', 'readxl', 'purrr'))
-
-
-library(stringr)
-library(tidyverse)
-library(here)
-library(lubridate)
-library(readxl)
-library(purrr)
+packages <- c('stringr', 'tidyverse', 'here', 'lubridate', 'readxl', 'purrr')
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
 
 #### load bird metadata + BORIS data #### 
 chick_data <- read_excel("~/ECoBird Dropbox/Reinoud Allaert/Gull_2024/data/raw_data/2024_gull_data.xlsx", sheet = "chicks")

@@ -1,8 +1,11 @@
-library(irr)
-library(dplyr)
-library(readxl)
-library(stringr)
-library(tidyr)
+packages <- c("irr", "dplyr", "readxl", "stringr", "tidyr")
+
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
 
 # Check IRR between coders
 
@@ -22,6 +25,7 @@ data_IRR <- read.csv("BORIS_IRR_SB.csv")
 
 #### preprocess BORIS data ####
 
+# same workflow as preprocessing, now for IRR data
 # remove NA cols, remove .mp4
 data_IRR <- data_IRR %>%
   select_if(~any(!is.na(.))) %>%
