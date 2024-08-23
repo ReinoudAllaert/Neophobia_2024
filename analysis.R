@@ -51,6 +51,8 @@ model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial +
               data = data)
 summary(model)
 
+check_model(model)
+
 
 
 # as described in RR
@@ -89,6 +91,4 @@ check_model(zoi_model)
 # in RR we also mention analysing latencies combined
 
 multivariate_model 
-
-
 
