@@ -12,8 +12,8 @@ script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 setwd(script_dir)
 
 #### load bird metadata + BORIS data #### 
-# still need to move this file to project folder
-chick_data <- read_excel("~/ECoBird Dropbox/Reinoud Allaert/Gull_2024/data/raw_data/2024_gull_data.xlsx", sheet = "chicks")
+
+chick_data <- read_excel("2024_chick_data.xlsx")
 # birds that did not die
 # create unique ID -> cage + colour
 chick_data <- chick_data %>%
