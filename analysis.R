@@ -12,7 +12,7 @@ script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 # Set the working directory to the script's directory
 setwd(script_dir)
 
-data <- read.csv("neophobia_data.csv", row.names=1)
+data <- read.csv("processed_data/neophobia_data.csv", row.names=1)
 
 ##### just adding a line here 
 

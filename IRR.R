@@ -15,16 +15,16 @@ setwd(script_dir)
 
 #### data ####
 #### load bird metadata + BORIS data #### 
-chick_data <- read_excel("2024_chick_data.xlsx")
+chick_data <- read_excel("raw_data/2024_chick_data.xlsx")
 # birds that did not die
 # create unique ID -> cage + colour
 chick_data <- chick_data %>%
   filter(is.na(comments)) %>%
   mutate(bird_ID = paste0(enclosure, "_", substr(rr_grp, 2, 2), "_", neocol))
 
-data <- read.csv("neophobia_data.csv", row.names=1)
+data <- read.csv("processed_data/neophobia_data.csv", row.names=1)
 # unprocessed IRR data
-data_IRR <- read.csv("BORIS_IRR_SB.csv")
+data_IRR <- read.csv("raw_data/BORIS_IRR_SB.csv")
 
 
 #### preprocess BORIS data ####
@@ -323,7 +323,7 @@ metrics_data <- metrics_data %>%
   )
 
 metrics_data
-write.csv(metrics_data, "neophobia_data_IRR.csv")
+write.csv(metrics_data, "processed_data/neophobia_data_IRR.csv")
 
 
 #################
