@@ -1,25 +1,35 @@
-library(irr)
-library(dplyr)
-library(readxl)
+packages <- c("irr", "dplyr", "readxl", "stringr", "tidyr")
+
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
 
 # Check IRR between coders
 
+script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# Set the working directory to the script's directory
+setwd(script_dir)
+
 #### data ####
 #### load bird metadata + BORIS data #### 
-chick_data <- read_excel("~/ECoBird Dropbox/Reinoud Allaert/Gull_2024/data/raw_data/2024_gull_data.xlsx", sheet = "chicks")
+chick_data <- read_excel("raw_data/2024_chick_data.xlsx")
 # birds that did not die
 # create unique ID -> cage + colour
 chick_data <- chick_data %>%
   filter(is.na(comments)) %>%
   mutate(bird_ID = paste0(enclosure, "_", substr(rr_grp, 2, 2), "_", neocol))
 
-data <- read.csv("neophobia_data.csv", row.names=1)
+data <- read.csv("processed_data/neophobia_data.csv", row.names=1)
 # unprocessed IRR data
-data_IRR <- read.csv("BORIS_IRR_SB.csv")
+data_IRR <- read.csv("raw_data/BORIS_IRR_SB.csv")
 
 
 #### preprocess BORIS data ####
 
+# same workflow as preprocessing, now for IRR data
 # remove NA cols, remove .mp4
 data_IRR <- data_IRR %>%
   select_if(~any(!is.na(.))) %>%
@@ -313,7 +323,7 @@ metrics_data <- metrics_data %>%
   )
 
 metrics_data
-write.csv(metrics_data, "neophobia_data_IRR.csv")
+write.csv(metrics_data, "processed_data/neophobia_data_IRR.csv")
 
 
 #################
@@ -372,3 +382,4 @@ icc_zoi_duration <- irr::icc(combined_data[, c("Zoi_duration_metrics", "Zoi_dura
 print(icc_latency_to_enter)
 print(icc_latency_to_eat)
 print(icc_zoi_duration)
+

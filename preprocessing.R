@@ -1,27 +1,34 @@
 #### load/install packages ####
+packages <- c('stringr', 'tidyverse', 'here', 'lubridate', 'readxl', 'purrr', 'summarytools')
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
 
-install.packages(c('stringr', 'tidyverse', 'here',
-                   'lubridate', 'readxl', 'purrr'))
-
-
-library(stringr)
-library(tidyverse)
-library(here)
-library(lubridate)
-library(readxl)
-library(purrr)
+script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# Set the working directory to the script's directory
+setwd(script_dir)
 
 #### load bird metadata + BORIS data #### 
-chick_data <- read_excel("~/ECoBird Dropbox/Reinoud Allaert/Gull_2024/data/raw_data/2024_gull_data.xlsx", sheet = "chicks")
+
+chick_data <- read_excel("raw_data/2024_chick_data.xlsx")
 # birds that did not die
 # create unique ID -> cage + colour
 chick_data <- chick_data %>%
   filter(is.na(comments)) %>%
   mutate(bird_ID = paste0(enclosure, "_", substr(rr_grp, 2, 2), "_", neocol))
 
-data_1 <- read.csv("BORIS_SK.csv")
-data_2 <- read.csv("BORIS_RA.csv")
+data_1 <- read.csv("raw_data/BORIS_SK.csv")
+data_2 <- read.csv("raw_data/BORIS_RA.csv")
 data <- rbind(data_1, data_2)
+
+# quick look at structure
+str(data)
+summary(data)
+dfSummary(data)
+
 
 #### preprocess BORIS data ####
 
@@ -32,7 +39,7 @@ data <- data %>% filter(Observation.id != "B2_3_A_novel_SK")
 
 set.seed(0)
 doublecode <- sample(unique(data$Observation.id), 0.2*length(unique(data$Observation.id)))
-write.csv(doublecode, "videos_for_doublecoding.csv")
+write.csv(doublecode, "processed_data/videos_for_doublecoding.csv")
 
 # remove NA cols, remove .mp4
 data <- data %>%
@@ -378,5 +385,7 @@ metrics_data <- metrics_data %>%
 
 metrics_data
 
+write.csv(metrics_data, "processed_data/neophobia_data.csv")
 
-write.csv(metrics_data, "neophobia_data.csv")
+rm(list = ls())
+
