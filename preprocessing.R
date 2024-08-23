@@ -7,7 +7,12 @@ for (pkg in packages) {
   library(pkg, character.only = TRUE)
 }
 
+script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# Set the working directory to the script's directory
+setwd(script_dir)
+
 #### load bird metadata + BORIS data #### 
+# still need to move this file to project folder
 chick_data <- read_excel("~/ECoBird Dropbox/Reinoud Allaert/Gull_2024/data/raw_data/2024_gull_data.xlsx", sheet = "chicks")
 # birds that did not die
 # create unique ID -> cage + colour

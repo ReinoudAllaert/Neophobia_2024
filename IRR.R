@@ -9,6 +9,10 @@ for (pkg in packages) {
 
 # Check IRR between coders
 
+script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# Set the working directory to the script's directory
+setwd(script_dir)
+
 #### data ####
 #### load bird metadata + BORIS data #### 
 chick_data <- read_excel("~/ECoBird Dropbox/Reinoud Allaert/Gull_2024/data/raw_data/2024_gull_data.xlsx", sheet = "chicks")
