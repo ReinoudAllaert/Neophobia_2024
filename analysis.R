@@ -1,4 +1,4 @@
-packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'summarytools', 'readxl', 'purrr', 'performance', 'emmeans')
+packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'readxl', 'purrr', 'performance', 'emmeans')
 
 # Check if each package is installed; if not, install it
 for (pkg in packages) {
@@ -19,7 +19,6 @@ data <- read.csv("processed_data/neophobia_data.csv", row.names=1)
 # quick look at structure
 str(data)
 summary(data)
-dfSummary(data)
 
 
 # not sure what groupID values should be during individual trials
