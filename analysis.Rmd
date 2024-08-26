@@ -1,0 +1,410 @@
+---
+title: Neophobia analysis
+---
+
+## Setup
+
+Load and install R packages:
+
+```{r Dependencies, echo=TRUE}
+packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'readxl', 'purrr', 'performance', 'emmeans', 'MASS', 'dplyr', 'tidyr')
+
+# Check if each package is installed; if not, install it
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
+
+```
+
+## Data Loading
+
+Grab `neophobia_data.csv` from `processed_data` directory:
+
+```{r Load data}
+script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# Set the working directory to the script's directory
+setwd(script_dir)
+
+data <- read.csv("processed_data/neophobia_data.csv", row.names = 1)
+
+```
+
+### Quick Data Inspection
+
+Summary statistics of the data:
+
+```{r Check data}
+# Quick look at structure
+str(data)
+summary(data)
+```
+
+## Data Preprocessing
+
+### Missing Group ID Values
+
+The `GroupID` values are currently coded as `NA` during individual trials. Assign the most frequent group for each bird:
+
+```{r Add grp values}
+most_frequent_group <- function(group_ids) {
+  group_ids <- group_ids[!is.na(group_ids)]
+  if (length(group_ids) == 0) return(NA)
+  names(sort(table(group_ids), decreasing = TRUE))[1]
+}
+
+most_frequent_group_per_bird <- data %>%
+  group_by(Bird_ID) %>%
+  summarize(most_frequent_group = most_frequent_group(GroupID)) %>%
+  ungroup()
+
+data <- data %>%
+  left_join(most_frequent_group_per_bird, by = "Bird_ID") %>%
+  mutate(GroupID = ifelse(is.na(GroupID), most_frequent_group, GroupID)) %>%
+  dplyr::select(-most_frequent_group)
+```
+
+### Adjusting Trial Numbers, so the baseline is the first trial rather than 0.
+
+Adjust the `Trial` variable by subtracting 1:
+
+```{r Set trial nbr}
+data$Trial <- data$Trial - 1
+
+```
+
+## Statistical Modeling
+
+### 1) Latency to Enter
+
+The full model as described in the RR, includes `Object_contrast`, `Context_contrast`, and `Trial`, and a complex random effect structure:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model)
+check_model(enter_model)
+
+```
+
+The random effect structure seems to be too complex for the amount of data. However, the variance for the `(Intercept)` under `NestID` is `0` and the variance for `group_dummy` under `GroupID` is `0`. This suggests that both nest as differences between groups contribute minimally to the variance in the outcome model. Let's drop both effects.
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+enter_model2 <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model2)
+check_model(enter_model2)
+```
+
+Seems like the interaction between object and context is non-significant, let's drop it. Given the non-normal distribution, let's logtransform the data as well:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+enter_model3 <- lmer(log(Latency_to_enter) ~ Object_contrast + Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model3)
+check_model(enter_model3)
+
+```
+
+There are still issues with the data distribution, let's remove birds that did not interact and boxcox_transform:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+
+data_enter <- data %>% filter(Latency_to_enter != 600)
+
+boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data_enter))
+best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
+
+data_enter$Latency_to_enter_trans <- (data_enter$Latency_to_enter^best_lambda - 1) / best_lambda
+
+enter_model4_boxcox <- lmer(Latency_to_enter_trans ~ Object_contrast + 
+                              Context_contrast + Trial + 
+                            (-1 + ind_dummy + group_dummy | Bird_ID), 
+                            data = data_enter)
+summary(enter_model4_boxcox)
+check_model(enter_model4_boxcox)
+```
+
+Comparing the different models, the boxcox transfromed comes out as best:
+
+```{r}
+enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data_enter)
+
+enter_model2 <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data_enter)
+
+enter_model3 <- lmer(log(Latency_to_enter) ~ Object_contrast + Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data_enter)
+
+enter_model4_boxcox <- lmer(Latency_to_enter_trans ~ Object_contrast + 
+                              Context_contrast + Trial + 
+                            (-1 + ind_dummy + group_dummy | Bird_ID), 
+                            data = data_enter)
+
+
+anova(enter_model, enter_model2, enter_model3, enter_model4_boxcox)
+
+```
+
+### 2) Latency to Eat Model
+
+A similar model is built for `Latency_to_Eat`, again incorporating interaction terms and random effects:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+
+eat_model <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + 
+                    (1 | NestID) + 
+                   (- 1 + group_dummy | GroupID) + 
+                   (- 1 + ind_dummy + group_dummy | Bird_ID),  
+                 data = data)
+summary(eat_model)
+check_model(eat_model)
+```
+
+Similarly, the variance for the `(Intercept)` under `NestID` is `0` and the variance for `group_dummy` under `GroupID` is `0`. Let's drop those:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+
+eat_model2 <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + 
+                   (- 1 + ind_dummy + group_dummy | Bird_ID),  
+                 data = data)
+summary(eat_model2)
+check_model(eat_model2)
+
+```
+
+There are still some issues with the normality. Let's remove non participating birds, and try the same boxcox tranformation:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+
+data_eat <- data %>% filter(Latency_to_Eat != 600)
+
+boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial, data = data))
+best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
+
+data_eat$Latency_to_eat_trans <- (data_eat$Latency_to_Eat^best_lambda - 1) / best_lambda
+
+
+
+enter_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast * 
+                              Context_contrast + Trial + 
+                            (-1 + ind_dummy + group_dummy | Bird_ID), 
+                            data = data_eat)
+summary(enter_model4_boxcox)
+check_model(enter_model4_boxcox)
+
+# now without interaction as it's non-sign:
+eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast +
+                              Context_contrast + Trial + 
+                            (-1 + ind_dummy + group_dummy | Bird_ID), 
+                            data = data_eat)
+summary(eat_model4_boxcox)
+check_model(eat_model4_boxcox)
+```
+
+boxcox model seems to fit data best
+
+```{r}
+eat_model <- lmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data_eat)
+
+eat_model2 <- lmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data_eat)
+
+eat_model3 <- lmer(log(Latency_to_Eat) ~ Object_contrast + Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data_eat)
+
+eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast +
+                              Context_contrast + Trial + 
+                            (-1 + ind_dummy + group_dummy | Bird_ID), 
+                            data = data_eat)
+
+
+anova(eat_model, eat_model2, eat_model3, eat_model4_boxcox)
+
+```
+
+### 3) Time spent in the ZOI
+
+The full model as described in the RR, includes `Object_contrast`, `Context_contrast`, and `Trial`, and a complex random effect structure:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+zoi_model <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(zoi_model)
+check_model(zoi_model)
+
+```
+
+Here the full model seems to fit, lets try with a simpeler ranef structure though:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+zoi_model2 <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(zoi_model2)
+check_model(zoi_model2)
+```
+
+There are still issues with the data distribution, let's boxcox_transform:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+
+boxcox_transform <- boxcox(lm(Zoi_duration+ 0.01 ~ Object_contrast * Context_contrast + Trial, data = data))
+best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
+
+data$Latency_to_zoi_trans <- (data$Zoi_duration^best_lambda - 1) / best_lambda
+
+zoi_model4_boxcox <- lmer(Latency_to_zoi_trans ~ Object_contrast * 
+                              Context_contrast + Trial + 
+                            (-1 + ind_dummy + group_dummy | Bird_ID), 
+                            data = data)
+summary(zoi_model4_boxcox)
+check_model(zoi_model4_boxcox)
+```
+
+Comparing the different models, the boxcox comes out as best:
+
+```{r}
+
+anova(zoi_model, zoi_model2, zoi_model4_boxcox)
+
+```
+
+So we end up with these models:
+
+```{r}
+# To enter
+summary(enter_model4_boxcox)
+
+# To eat
+summary(eat_model4_boxcox)
+
+# Time near object
+summary(zoi_model4_boxcox)
+```
+
+#### So for entering:
+
+##### Fixed Effects:
+
+Object_contrast: Birds took longer to enter when the object was novel. Context_contrast:Birds were quicker to enter when they were in a group compared to when they were alone.
+
+##### Random Effects: 
+
+Variance: The variance is slightly higher for individual trials, suggesting that there is more variability in how long birds take to enter when they are alone. However the variance is only slightly higher.
+
+#### So for eating:
+
+##### Fixed Effects:
+
+Object_contrast: Birds take longer to start eating when the object is novel. Context_contrast: Birds are quicker to eat when they are in a group compared to when they are alone.
+
+##### Random Effects: 
+
+Variance: Similar to the latency to enter, there is slightly more variability in the latency to eat during individual trials, indicating that birds' responses to novelty are more variable when they are alone.
+
+#### So for ZOI:
+
+##### Fixed Effects:
+
+Object_contrast: Birds spend less time near novel objects-. Context_contrast: Birds spend more time near objects when they are in a group compared to when they are alone. Trial: Time near objects increases over time. Interaction between Object_contrast and Context_contrast: Suggests that the effect of object novelty on the time spent near the object depends on whether the birds are alone or in a group. In a group, birds may be more willing to spend time near a novel object, while alone, they might avoid it more quickly.
+
+##### Random Effects: 
+
+Variance: The variance is much higher for individual trials, indicating substantial variability in how long individual birds spend near novel objects when they are alone. Potentially reflects differences in individual boldness or fearfulness in the absence of a group.
+
+### Additional Analysis
+
+Now fit a multivariate model:
+
+```{r}
+# make data long:
+data_long <- data %>%
+  pivot_longer(
+    cols = c(Latency_to_enter, Latency_to_Eat),
+    names_to = "Behaviour_Type",
+    values_to = "Latency"
+  )
+data_long <- data_long %>%
+  mutate(
+    eat_vs_leave_contrast = case_when(
+      Behaviour_Type == "Latency_to_enter" ~ -0.5,
+      Behaviour_Type == "Latency_to_Eat" ~ 0.5
+    )
+  )
+
+# fir full model
+latency_model <- lmer(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial + 
+                    (1 | NestID) +
+                    (- 1 + group_dummy | GroupID) + 
+                    (- 1 + ind_dummy + group_dummy + eat_vs_leave_contrast | Bird_ID), 
+                  data = data_long)
+
+summary(latency_model)
+
+```
+
+Same as before, reduce the model:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+
+latency_model2 <- lmer(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial + 
+                    (- 1 + ind_dummy + group_dummy + eat_vs_leave_contrast | Bird_ID), 
+                  data = data_long)
+
+summary(latency_model2)
+check_model(latency_model2)
+
+```
+
+Same as before, remove birds that dont enter/eat and boxcox transfrom the data:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+
+data_long_f <- data_long %>% filter(Latency != 600)
+
+boxcox_transform <- boxcox(lm(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial, data = data_long_f))
+best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
+
+data_long_f$Latency_trans <- (data_long_f$Latency^best_lambda - 1) / best_lambda
+
+
+
+latency_model3_boxcox <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial + 
+                    (- 1 + ind_dummy + group_dummy + eat_vs_leave_contrast | Bird_ID), 
+                  data = data_long_f)
+
+summary(latency_model3_boxcox)
+check_model(latency_model3_boxcox)
+
+
+```
+
+I would say the multivariate model supports what the we found earlier. Only difference is the significance of trial.
