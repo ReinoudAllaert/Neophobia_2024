@@ -1,5 +1,8 @@
 ---
-title: Neophobia analysis
+title: "Neophobia analysis"
+output:
+  html_document:
+    df_print: paged
 ---
 
 ## Setup
