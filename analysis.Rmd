@@ -36,10 +36,35 @@ data <- read.csv("processed_data/neophobia_data.csv", row.names = 1)
 
 Summary statistics of the data:
 
-```{r Check data}
+```{r, fig.width=10, fig.height=10, dpi=300}
 # Quick look at structure
 str(data)
 summary(data)
+
+# There are quite a bit of birds that never ate, let's explore those:
+data_not_eat <- data %>% filter(Latency_to_Eat == 600)
+
+# 13/30 not eating trials are from birds that did not eat twice or more 
+sort(table(data_not_eat$Bird_ID), decreasing = TRUE)
+
+data_not_eat <- data_not_eat %>%
+  group_by(Object, Context) %>%
+  summarise(Count = n())
+data_not_eat$obj_cont <- paste0(data_not_eat$Object, "_", data_not_eat$Context)
+
+# Plotting with counts on bars
+ggplot(data_not_eat, aes(x = obj_cont, y = Count, fill = Context)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = Count), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.3, size = 3) +
+  labs(title = "Object x context for birds that never ate",
+       x = "Object x context",
+       y = "Count") +
+  theme_minimal()
+
+# Almost all of those occurences are individual x novel
+
 ```
 
 ## Data Preprocessing
@@ -167,7 +192,7 @@ anova(enter_model, enter_model2, enter_model3, enter_model4_boxcox)
 A similar model is built for `Latency_to_Eat`, again incorporating interaction terms and random effects:
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
-
+# Given that the distribution of DV is similar to that of the enter model, we log transformed .
 eat_model <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + 
                     (1 | NestID) + 
                    (- 1 + group_dummy | GroupID) + 
@@ -193,14 +218,12 @@ There are still some issues with the normality. Let's try the same boxcox tranfo
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
 
-data_eat <- data #%>% filter(Latency_to_Eat != 600)
+data_eat <- data 
 
 boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial, data = data))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
 
 data_eat$Latency_to_eat_trans <- (data_eat$Latency_to_Eat^best_lambda - 1) / best_lambda
-
-
 
 eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast * 
                               Context_contrast + Trial + 
@@ -208,7 +231,6 @@ eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast *
                             data = data_eat)
 summary(eat_model4_boxcox)
 check_model(eat_model4_boxcox)
-
 ```
 
 boxcox model seems to fit data best
@@ -381,18 +403,17 @@ Same as before, boxcox transfrom the data:
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
 
-data_long_f <- data_long #%>% filter(Latency != 600)
 
-boxcox_transform <- boxcox(lm(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial, data = data_long_f))
+boxcox_transform <- boxcox(lm(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial, data = data_long))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
 
-data_long_f$Latency_trans <- (data_long_f$Latency^best_lambda - 1) / best_lambda
+data_long$Latency_trans <- (data_long$Latency^best_lambda - 1) / best_lambda
 
 
 
 latency_model3_boxcox <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial + 
                     (- 1 + ind_dummy + group_dummy + eat_vs_leave_contrast | Bird_ID), 
-                  data = data_long_f)
+                  data = data_long)
 
 summary(latency_model3_boxcox)
 check_model(latency_model3_boxcox)
@@ -400,7 +421,45 @@ check_model(latency_model3_boxcox)
 
 ```
 
-I would say the multivariate model supports what the we found earlier. Only difference is the significance of trial.
+I would say the multivariate model supports what the we found earlier. 3-way interaction is nonsign, so lets remove it:
+
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+latency_model3_boxcox_reduced <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast +
+                                       eat_vs_leave_contrast * Context_contrast +
+                                       Object_contrast * Context_contrast +
+                                       Trial + 
+                                       (-1 + ind_dummy + group_dummy + eat_vs_leave_contrast  | Bird_ID), 
+                                     data = data_long)
+
+# Summary of the updated model
+summary(latency_model3_boxcox_reduced)
+
+# Check the model diagnostics
+check_model(latency_model3_boxcox_reduced)
+```
+There are still issues with the ranef structure, simpligy the model:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+latency_model3_boxcox_reduced_2 <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast +
+                                       eat_vs_leave_contrast * Context_contrast +
+                                       Object_contrast * Context_contrast +
+                                       Trial + 
+                                       (-1 + ind_dummy + group_dummy  | Bird_ID), 
+                                     data = data_long)
+
+# Summary of the updated model
+summary(latency_model3_boxcox_reduced)
+
+# Check the model diagnostics
+check_model(latency_model3_boxcox_reduced)
+```
+```{r}
+anova(latency_model3_boxcox_reduced_2, latency_model3_boxcox_reduced, latency_model3_boxcox, latency_model2, latency_model)
+```
+latency_model3_boxcox_reduced seems to be the best fit, but gives warnings (contrary to reduced_2):
+boundary (singular) fit: see help('isSingular')
+Warning: Model failed to converge with 1 negative eigenvalue: -4.1e+00
 
 ## Some birds were actually LBBG, repeat analysis without them:
 
@@ -415,7 +474,7 @@ data_excl <- data %>% filter(!Bird_ID %in% LBBG)
 ###To enter:
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
-data_enter <- data_excl #%>% filter(Latency_to_enter != 600)
+data_enter <- data_excl 
 
 boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data_enter))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
@@ -434,7 +493,7 @@ check_model(enter_model4_boxcox)
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
 
-data_eat <- data_excl #%>% filter(Latency_to_Eat != 600)
+data_eat <- data_excl 
 
 boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial, data = data))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
@@ -450,15 +509,9 @@ eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast *
 summary(eat_model4_boxcox)
 check_model(eat_model4_boxcox)
 
-# now without interaction as it's non-sign:
-eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast +
-                              Context_contrast + Trial + 
-                            (-1 + ind_dummy + group_dummy | Bird_ID), 
-                            data = data_eat)
-summary(eat_model4_boxcox)
-check_model(eat_model4_boxcox)
 ```
-###For ZOI, now object is no longer significant:
+###For ZOI, now object is no longer significant (but interaction is):
+So when birds are in group, they don't care about the novelty of the object, when alone they do.
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
 
