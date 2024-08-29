@@ -44,10 +44,19 @@ Summary statistics of the data:
 str(data)
 summary(data)
 
+# 14 birds were LBBG instead of HG, in the RR we stated that we would remove those from the analysis:
+
+LBBG <- c("GY_RY", "BG_RR", "GR_GR", "GG_BR",
+          "BG_BY", "GY_PP", "PR_BP", "PY_BY",
+          "BP_BY", "BB_RR", "GG_BG", "BB_GY",
+          "PR_RY", "GP_BP")
+
+data <- data %>% filter(!Bird_ID %in% LBBG)
+
 # There are quite a bit of birds that never ate, let's explore those:
 data_not_eat <- data %>% filter(Latency_to_Eat == 600)
 
-# 13/30 not eating trials are from birds that did not eat twice or more 
+# 13/29 not eating trials are from birds that did not eat twice or more 
 sort(table(data_not_eat$Bird_ID), decreasing = TRUE)
 
 data_not_eat <- data_not_eat %>%
@@ -55,18 +64,10 @@ data_not_eat <- data_not_eat %>%
   summarise(Count = n())
 data_not_eat$obj_cont <- paste0(data_not_eat$Object, "_", data_not_eat$Context)
 
-# Plotting with counts on bars
-ggplot(data_not_eat, aes(x = obj_cont, y = Count, fill = Context)) +
-  geom_bar(stat = "identity", position = "dodge") +
-  geom_text(aes(label = Count), 
-            position = position_dodge(width = 0.9), 
-            vjust = -0.3, size = 3) +
-  labs(title = "Object x context for birds that never ate",
-       x = "Object x context",
-       y = "Count") +
-  theme_minimal()
+# Almost all of those ocurrences are individual x novel
+data_not_eat
 
-# Almost all of those occurences are individual x novel
+# Given that these are actually the most interesting birds, we should keep them in the analysis. There are only 106 individual x novel trials in total. Excluding 29 of them  would mean losing 1/3 of the data.
 
 ```
 
@@ -148,8 +149,7 @@ There are still issues with the data distribution, let's boxcox_transform:
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
 
-data_enter <- data #%>% filter(Latency_to_enter != 600)
-
+data_enter <- data
 boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data_enter))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
 
@@ -332,11 +332,11 @@ summary(zoi_model4_boxcox)
 
 ##### Fixed Effects:
 
-Only trial seems to be significant, with birds becoming faster over time.
+Context is significant, with birds being faster in groups compared to being alone. In addition trial is significant, with birds becoming faster over time.
 
 ##### Random Effects:
 
-Variance: The variance is higher for individual trials, suggesting that there is more variability in how long birds take to enter when they are alone. However the variance is in the same ballpark.
+Variance: The variance is higher for individual trials, suggesting that there is more variability in how long birds take to enter when they are alone. 
 
 #### So for eating:
 
@@ -346,17 +346,17 @@ Object_contrast: Birds take longer to start eating when the object is novel. Con
 
 ##### Random Effects:
 
-Variance: Similar to the latency to enter, there is slightly more variability in the latency to eat during individual trials, indicating that birds' responses to novelty are more variable when they are alone.
+Variance: There is slightly more variability in the latency to eat during individual trials, indicating that birds' responses to novelty are more variable when they are alone. However the values are in the same ballpark.
 
 #### So for ZOI:
 
 ##### Fixed Effects:
 
-Object_contrast: Birds spend less time near novel objects-. Context_contrast: Birds spend more time near objects when they are in a group compared to when they are alone. Trial: Time near objects increases over time. Interaction between Object_contrast and Context_contrast: Suggests that the effect of object novelty on the time spent near the object depends on whether the birds are alone or in a group. In a group, birds may be more willing to spend time near a novel object, while alone, they might avoid it more quickly.
+Context_contrast: Birds spend more time near objects when they are in a group compared to when they are alone. Trial: Time near objects increases over time. Interaction between Object_contrast and Context_contrast: Suggests that the effect of object novelty on the time spent near the object depends on whether the birds are alone or in a group. In a group, birds may be more willing to spend time near a novel object, while alone, they might avoid it more quickly.
 
 ##### Random Effects:
 
-Variance: The variance is much higher for individual trials, indicating substantial variability in how long individual birds spend near novel objects when they are alone. Potentially reflects differences in individual boldness or fearfulness in the absence of a group.
+Variance: The variance is higher for individual trials, indicating variability in how long individual birds spend near novel objects when they are alone. Potentially reflects differences in individual boldness or fearfulness in the absence of a group.
 
 ### Additional Analysis
 
@@ -424,29 +424,11 @@ check_model(latency_model3_boxcox)
 
 ```
 
-I would say the multivariate model supports what the we found earlier. 3-way interaction is nonsign, so lets remove it:
 
-
-```{r, fig.width=10, fig.height=10, dpi=300}
-latency_model3_boxcox_reduced <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast +
-                                       eat_vs_leave_contrast * Context_contrast +
-                                       Object_contrast * Context_contrast +
-                                       Trial + 
-                                       (-1 + ind_dummy + group_dummy + eat_vs_leave_contrast  | Bird_ID), 
-                                     data = data_long)
-
-# Summary of the updated model
-summary(latency_model3_boxcox_reduced)
-
-# Check the model diagnostics
-check_model(latency_model3_boxcox_reduced)
-```
 There are still issues with the ranef structure, simpligy the model:
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
-latency_model3_boxcox_reduced_2 <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast +
-                                       eat_vs_leave_contrast * Context_contrast +
-                                       Object_contrast * Context_contrast +
+latency_model3_boxcox_reduced <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast * Context_contrast +
                                        Trial + 
                                        (-1 + ind_dummy + group_dummy  | Bird_ID), 
                                      data = data_long)
@@ -457,77 +439,27 @@ summary(latency_model3_boxcox_reduced)
 # Check the model diagnostics
 check_model(latency_model3_boxcox_reduced)
 ```
+I would say the multivariate model supports what the we found earlier. 3-way interaction is nonsign, so lets remove it:
+
+```{r, fig.width=10, fig.height=10, dpi=300}
+latency_model3_boxcox_reduced_2 <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast +
+                                       eat_vs_leave_contrast * Context_contrast +
+                                       Object_contrast * Context_contrast +
+                                       Trial + 
+                                       (-1 + ind_dummy + group_dummy  | Bird_ID), 
+                                     data = data_long)
+
+# Summary of the updated model
+summary(latency_model3_boxcox_reduced_2)
+
+# Check the model diagnostics
+check_model(latency_model3_boxcox_reduced_2)
+```
+
 ```{r}
 anova(latency_model3_boxcox_reduced_2, latency_model3_boxcox_reduced, latency_model3_boxcox, latency_model2, latency_model)
 ```
-latency_model3_boxcox_reduced seems to be the best fit, but gives warnings (contrary to reduced_2):
-boundary (singular) fit: see help('isSingular')
-Warning: Model failed to converge with 1 negative eigenvalue: -4.1e+00
 
-## Some birds were actually LBBG, repeat analysis without them:
-
-```{r}
-LBBG <- c("GY_RY", "BG_RR", "GR_GR", "GG_BR",
-          "BG_BY", "GY_PP", "PR_BP", "PY_BY",
-          "BP_BY", "BB_RR", "GG_BG", "BB_GY",
-          "PR_RY", "GP_BP")
-data_excl <- data %>% filter(!Bird_ID %in% LBBG)
-```
-
-###To enter:
-
-```{r, fig.width=10, fig.height=10, dpi=300}
-data_enter <- data_excl 
-
-boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data_enter))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-data_enter$Latency_to_enter_trans <- (data_enter$Latency_to_enter^best_lambda - 1) / best_lambda
-
-enter_model4_boxcox <- lmer(Latency_to_enter_trans ~ Object_contrast + 
-                              Context_contrast + Trial + 
-                            (-1 + ind_dummy + group_dummy | Bird_ID), 
-                            data = data_enter)
-summary(enter_model4_boxcox)
-check_model(enter_model4_boxcox)
-```
-
-###To eat:
-
-```{r, fig.width=10, fig.height=10, dpi=300}
-
-data_eat <- data_excl 
-
-boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial, data = data))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-data_eat$Latency_to_eat_trans <- (data_eat$Latency_to_Eat^best_lambda - 1) / best_lambda
-
-
-
-eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast * 
-                              Context_contrast + Trial + 
-                            (-1 + ind_dummy + group_dummy | Bird_ID), 
-                            data = data_eat)
-summary(eat_model4_boxcox)
-check_model(eat_model4_boxcox)
-
-```
-###For ZOI, now object is no longer significant (but interaction is):
-So when birds are in group, they don't care about the novelty of the object, when alone they do.
-
-```{r, fig.width=10, fig.height=10, dpi=300}
-
-boxcox_transform <- boxcox(lm(Zoi_duration+ 0.01 ~ Object_contrast * Context_contrast + Trial, data = data_excl))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-data_excl$Latency_to_zoi_trans <- (data_excl$Zoi_duration^best_lambda - 1) / best_lambda
-
-zoi_model4_boxcox <- lmer(Latency_to_zoi_trans ~ Object_contrast * 
-                              Context_contrast + Trial + 
-                            (-1 + ind_dummy + group_dummy | Bird_ID), 
-                            data = data_excl)
-summary(zoi_model4_boxcox)
-check_model(zoi_model4_boxcox)
-```
+latency_model3_boxcox_reduced seems to be the best fit, but gives warnings (contrary to reduced_2): boundary (singular) fit: see help('isSingular') Warning: Model failed to converge with 1 negative eigenvalue: -4.1e+00
+The other model only gives the boundary (singular) fit warning.
 
