@@ -44,12 +44,12 @@ Summary statistics of the data:
 str(data)
 summary(data)
 
-# 14 birds were LBBG instead of HG, in the RR we stated that we would remove those from the analysis:
+# 13 birds were LBBG instead of HG, in the RR we stated that we would remove those from the analysis:
 
 LBBG <- c("GY_RY", "BG_RR", "GR_GR", "GG_BR",
           "BG_BY", "GY_PP", "PR_BP", "PY_BY",
           "BP_BY", "BB_RR", "GG_BG", "BB_GY",
-          "PR_RY", "GP_BP")
+          "PR_RY")
 
 data <- data %>% filter(!Bird_ID %in% LBBG)
 
@@ -149,16 +149,15 @@ There are still issues with the data distribution, let's boxcox_transform:
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
 
-data_enter <- data
-boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data_enter))
+boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
 
-data_enter$Latency_to_enter_trans <- (data_enter$Latency_to_enter^best_lambda - 1) / best_lambda
+data$Latency_to_enter_trans <- (data$Latency_to_enter^best_lambda - 1) / best_lambda
 
 enter_model4_boxcox <- lmer(Latency_to_enter_trans ~ Object_contrast + 
                               Context_contrast + Trial + 
                             (-1 + ind_dummy + group_dummy | Bird_ID), 
-                            data = data_enter)
+                            data = data)
 summary(enter_model4_boxcox)
 check_model(enter_model4_boxcox)
 ```
@@ -166,28 +165,7 @@ check_model(enter_model4_boxcox)
 Comparing the different models, the boxcox transfromed comes out as best:
 
 ```{r}
-enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data_enter)
-
-enter_model2 <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data_enter)
-
-enter_model3 <- lmer(log(Latency_to_enter) ~ Object_contrast + Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data_enter)
-
-enter_model4_boxcox <- lmer(Latency_to_enter_trans ~ Object_contrast + 
-                              Context_contrast + Trial + 
-                            (-1 + ind_dummy + group_dummy | Bird_ID), 
-                            data = data_enter)
-
-
 anova(enter_model, enter_model2, enter_model3, enter_model4_boxcox)
-
 ```
 
 ### 2) Latency to Eat Model
@@ -221,17 +199,15 @@ There are still some issues with the normality. Let's try the same boxcox tranfo
 
 ```{r, fig.width=10, fig.height=10, dpi=300}
 
-data_eat <- data 
-
 boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial, data = data))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
 
-data_eat$Latency_to_eat_trans <- (data_eat$Latency_to_Eat^best_lambda - 1) / best_lambda
+data$Latency_to_eat_trans <- (data$Latency_to_Eat^best_lambda - 1) / best_lambda
 
 eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast * 
                               Context_contrast + Trial + 
                             (-1 + ind_dummy + group_dummy | Bird_ID), 
-                            data = data_eat)
+                            data = data)
 summary(eat_model4_boxcox)
 check_model(eat_model4_boxcox)
 ```
@@ -239,27 +215,8 @@ check_model(eat_model4_boxcox)
 boxcox model seems to fit data best
 
 ```{r}
-eat_model <- lmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data_eat)
 
-eat_model2 <- lmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data_eat)
-
-eat_model3 <- lmer(log(Latency_to_Eat) ~ Object_contrast + Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data_eat)
-
-eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast +
-                              Context_contrast + Trial + 
-                            (-1 + ind_dummy + group_dummy | Bird_ID), 
-                            data = data_eat)
-
-
-anova(eat_model, eat_model2, eat_model3, eat_model4_boxcox)
+anova(eat_model, eat_model2, eat_model4_boxcox)
 
 ```
 
