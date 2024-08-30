@@ -10,7 +10,7 @@ output:
 Load and install R packages:
 
 ```{r Dependencies, echo=TRUE}
-packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'readxl', 'purrr', 'performance', 'emmeans', 'MASS', 'dplyr', 'tidyr')
+packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'readxl', 'purrr', 'performance', 'emmeans', 'MASS', 'dplyr', 'tidyr', 'nlme')
 
 # Check if each package is installed; if not, install it
 for (pkg in packages) {
@@ -30,21 +30,22 @@ Grab `neophobia_data.csv` from `processed_data` directory:
 script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 # Set the working directory to the script's directory
 setwd(script_dir)
-
 data <- read.csv("processed_data/neophobia_data.csv", row.names = 1)
 
 ```
 
-### Quick Data Inspection
+## Quick Data Inspection
+
+### Filter out LBBG
 
 Summary statistics of the data:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r data summary, fig.width=10, fig.height=10, dpi=300}
 # Quick look at structure
 str(data)
 summary(data)
 
-# 13 birds were LBBG instead of HG, in the RR we stated that we would remove those from the analysis:
+# 13 birds were ID'd to be LBBG instead of HG, in the RR we stated  we would remove those from the analysis:
 
 LBBG <- c("GY_RY", "BG_RR", "GR_GR", "GG_BR",
           "BG_BY", "GY_PP", "PR_BP", "PY_BY",
@@ -110,7 +111,7 @@ data$Trial <- data$Trial - 1
 
 The full model as described in the RR, includes `Object_contrast`, `Context_contrast`, and `Trial`, and a complex random effect structure:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
 enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
                 (1 | NestID) + 
                 (-1 + group_dummy | GroupID) + 
@@ -124,7 +125,7 @@ check_model(enter_model)
 
 The random effect structure seems to be too complex for the amount of data. However, the variance for the `(Intercept)` under `NestID` is `0` and the variance for `group_dummy` under `GroupID` is `0`. This suggests that both nest as differences between groups contribute minimally to the variance in the outcome model. Let's drop both effects.
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r Enter model 2, fig.width=10, fig.height=10, dpi=300}
 enter_model2 <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
                 (-1 +  ind_dummy + group_dummy | Bird_ID), 
               data = data)
@@ -135,7 +136,7 @@ check_model(enter_model2)
 
 Seems like the interaction between object and context is non-significant, let's drop it. Given the non-normal distribution, let's logtransform the data as well:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r Enter model 3, fig.width=10, fig.height=10, dpi=300}
 enter_model3 <- lmer(log(Latency_to_enter) ~ Object_contrast + Context_contrast + Trial + 
                 (-1 +  ind_dummy + group_dummy | Bird_ID), 
               data = data)
@@ -147,7 +148,7 @@ check_model(enter_model3)
 
 There are still issues with the data distribution, let's boxcox_transform:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r Enter model 4, fig.width=10, fig.height=10, dpi=300}
 
 boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
@@ -164,7 +165,7 @@ check_model(enter_model4_boxcox)
 
 Comparing the different models, the boxcox transfromed comes out as best:
 
-```{r}
+```{r Compare entering models}
 anova(enter_model, enter_model2, enter_model3, enter_model4_boxcox)
 ```
 
@@ -172,7 +173,7 @@ anova(enter_model, enter_model2, enter_model3, enter_model4_boxcox)
 
 A similar model is built for `Latency_to_Eat`, again incorporating interaction terms and random effects:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r Eat model 1, fig.width=10, fig.height=10, dpi=300}
 # Given that the distribution of DV is similar to that of the enter model, we log transformed .
 eat_model <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + 
                     (1 | NestID) + 
@@ -185,7 +186,7 @@ check_model(eat_model)
 
 Similarly, the variance for the `(Intercept)` under `NestID` is `0` and the variance for `group_dummy` under `GroupID` is `0`. Let's drop those:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r Eat model 2, fig.width=10, fig.height=10, dpi=300}
 
 eat_model2 <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + 
                    (- 1 + ind_dummy + group_dummy | Bird_ID),  
@@ -197,7 +198,7 @@ check_model(eat_model2)
 
 There are still some issues with the normality. Let's try the same boxcox tranformation:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r Eat model 3, fig.width=10, fig.height=10, dpi=300}
 
 boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial, data = data))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
@@ -208,13 +209,43 @@ eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast *
                               Context_contrast + Trial + 
                             (-1 + ind_dummy + group_dummy | Bird_ID), 
                             data = data)
+
 summary(eat_model4_boxcox)
 check_model(eat_model4_boxcox)
 ```
 
-boxcox model seems to fit data best
+boxcox model seems to fit data best, but still a correlation of 1, which is problematic... Potentially use nlme?
 
 ```{r}
+eat_model_nlme <- lme(Latency_to_eat_trans ~ Object_contrast * Context_contrast + Trial, 
+                      random = ~ 1 | Bird_ID,
+                      weights = varIdent(form = ~ 1 | Context),  
+                      data = data)
+
+summary(eat_model_nlme)
+check_model(eat_model_nlme)
+```
+
+Or model contexts separately?
+
+```{r}
+# model for group context
+eat_model_group <- lmer(Latency_to_eat_trans ~ Object_contrast + Trial + 
+                        (1 | Bird_ID), 
+                        data = subset(data, Context == "group"))
+
+# model for individual context
+eat_model_alone <- lmer(Latency_to_eat_trans ~ Object_contrast  + Trial + 
+                        (1 | Bird_ID), 
+                        data = subset(data, Context == "individual"))
+
+# Compare variances
+summary(eat_model_group)
+summary(eat_model_alone)
+```
+
+
+```{r Compare eat models}
 
 anova(eat_model, eat_model2, eat_model4_boxcox)
 
@@ -224,7 +255,7 @@ anova(eat_model, eat_model2, eat_model4_boxcox)
 
 The full model as described in the RR, includes `Object_contrast`, `Context_contrast`, and `Trial`, and a complex random effect structure:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r ZOI model 1, fig.width=10, fig.height=10, dpi=300}
 zoi_model <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
                 (1 | NestID) + 
                 (-1 + group_dummy | GroupID) + 
@@ -238,7 +269,7 @@ check_model(zoi_model)
 
 Here the full model seems to fit, lets try with a simpeler ranef structure though:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r ZOI model 2, fig.width=10, fig.height=10, dpi=300}
 zoi_model2 <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
                 (-1 +  ind_dummy + group_dummy | Bird_ID), 
               data = data)
@@ -249,7 +280,7 @@ check_model(zoi_model2)
 
 There are still issues with the data distribution, let's boxcox_transform:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r ZOI model 3, fig.width=10, fig.height=10, dpi=300}
 
 boxcox_transform <- boxcox(lm(Zoi_duration+ 0.01 ~ Object_contrast * Context_contrast + Trial, data = data))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
@@ -266,7 +297,7 @@ check_model(zoi_model4_boxcox)
 
 Comparing the different models, the boxcox comes out as best:
 
-```{r}
+```{r Compare ZOI models}
 
 anova(zoi_model, zoi_model2, zoi_model4_boxcox)
 
@@ -274,7 +305,7 @@ anova(zoi_model, zoi_model2, zoi_model4_boxcox)
 
 So we end up with these models:
 
-```{r}
+```{r Summarise models}
 # To enter
 summary(enter_model4_boxcox)
 
@@ -293,7 +324,7 @@ Context is significant, with birds being faster in groups compared to being alon
 
 ##### Random Effects:
 
-Variance: The variance is higher for individual trials, suggesting that there is more variability in how long birds take to enter when they are alone. 
+Variance: The variance is higher for individual trials, suggesting that there is more variability in how long birds take to enter when they are alone.
 
 #### So for eating:
 
@@ -315,11 +346,11 @@ Context_contrast: Birds spend more time near objects when they are in a group co
 
 Variance: The variance is higher for individual trials, indicating variability in how long individual birds spend near novel objects when they are alone. Potentially reflects differences in individual boldness or fearfulness in the absence of a group.
 
-### Additional Analysis
+## Multivariate analysis
 
 Now fit a multivariate model:
 
-```{r}
+```{r multivariate model 1}
 # make data long:
 data_long <- data %>%
   pivot_longer(
@@ -348,7 +379,7 @@ summary(latency_model)
 
 Same as before, reduce the model:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r multivariate model 2, fig.width=10, fig.height=10, dpi=300}
 
 latency_model2 <- lmer(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial + 
                     (- 1 + ind_dummy + group_dummy + eat_vs_leave_contrast | Bird_ID), 
@@ -361,7 +392,7 @@ check_model(latency_model2)
 
 Same as before, boxcox transfrom the data:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r multivariate model 3, fig.width=10, fig.height=10, dpi=300}
 
 
 boxcox_transform <- boxcox(lm(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial, data = data_long))
@@ -381,10 +412,9 @@ check_model(latency_model3_boxcox)
 
 ```
 
-
 There are still issues with the ranef structure, simpligy the model:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r multivariate model 4, fig.width=10, fig.height=10, dpi=300}
 latency_model3_boxcox_reduced <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast * Context_contrast +
                                        Trial + 
                                        (-1 + ind_dummy + group_dummy  | Bird_ID), 
@@ -396,9 +426,10 @@ summary(latency_model3_boxcox_reduced)
 # Check the model diagnostics
 check_model(latency_model3_boxcox_reduced)
 ```
+
 I would say the multivariate model supports what the we found earlier. 3-way interaction is nonsign, so lets remove it:
 
-```{r, fig.width=10, fig.height=10, dpi=300}
+```{r multivariate model 5, fig.width=10, fig.height=10, dpi=300}
 latency_model3_boxcox_reduced_2 <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast +
                                        eat_vs_leave_contrast * Context_contrast +
                                        Object_contrast * Context_contrast +
@@ -413,10 +444,8 @@ summary(latency_model3_boxcox_reduced_2)
 check_model(latency_model3_boxcox_reduced_2)
 ```
 
-```{r}
+```{r Compare multivariate models }
 anova(latency_model3_boxcox_reduced_2, latency_model3_boxcox_reduced, latency_model3_boxcox, latency_model2, latency_model)
 ```
 
-latency_model3_boxcox_reduced seems to be the best fit, but gives warnings (contrary to reduced_2): boundary (singular) fit: see help('isSingular') Warning: Model failed to converge with 1 negative eigenvalue: -4.1e+00
-The other model only gives the boundary (singular) fit warning.
-
+latency_model3_boxcox_reduced seems to be the best fit, but gives warnings (contrary to reduced_2): boundary (singular) fit: see help('isSingular') Warning: Model failed to converge with 1 negative eigenvalue: -4.1e+00 The other model only gives the boundary (singular) fit warning.
