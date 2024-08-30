@@ -1,6 +1,6 @@
 {
   "R": {
-    "Version": "4.3.1",
+    "Version": "4.4.1",
     "Repositories": [
       {
         "Name": "CRAN",
@@ -19,17 +19,48 @@
       ],
       "Hash": "470851b6d5d0ac559e9d01bb352b4021"
     },
-    "cellranger": {
-      "Package": "cellranger",
-      "Version": "1.1.0",
+    "base64enc": {
+      "Package": "base64enc",
+      "Version": "0.1-3",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "543776ae6848fde2f48ff3816d0628bc"
+    },
+    "bslib": {
+      "Package": "bslib",
+      "Version": "0.7.0",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "R",
-        "rematch",
-        "tibble"
+        "base64enc",
+        "cachem",
+        "fastmap",
+        "grDevices",
+        "htmltools",
+        "jquerylib",
+        "jsonlite",
+        "lifecycle",
+        "memoise",
+        "mime",
+        "rlang",
+        "sass"
       ],
-      "Hash": "f61dbaec772ccd2e17705c1e872e9e7c"
+      "Hash": "8644cc53f43828f19133548195d7e59e"
+    },
+    "cachem": {
+      "Package": "cachem",
+      "Version": "1.1.0",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "fastmap",
+        "rlang"
+      ],
+      "Hash": "cd9a672193789068eb5a2aad65a0dedf"
     },
     "cli": {
       "Package": "cli",
@@ -42,27 +73,50 @@
       ],
       "Hash": "b21916dd77a27642b447374a5d30ecf3"
     },
-    "cpp11": {
-      "Package": "cpp11",
-      "Version": "0.4.7",
+    "digest": {
+      "Package": "digest",
+      "Version": "0.6.36",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
-        "R"
-      ],
-      "Hash": "5a295d7d963cc5035284dcdbaf334f4e"
-    },
-    "crayon": {
-      "Package": "crayon",
-      "Version": "1.5.3",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "grDevices",
-        "methods",
+        "R",
         "utils"
       ],
-      "Hash": "859d96e65ef198fd43e82b9628d593ef"
+      "Hash": "fd6824ad91ede64151e93af67df6376b"
+    },
+    "dplyr": {
+      "Package": "dplyr",
+      "Version": "1.1.4",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "R6",
+        "cli",
+        "generics",
+        "glue",
+        "lifecycle",
+        "magrittr",
+        "methods",
+        "pillar",
+        "rlang",
+        "tibble",
+        "tidyselect",
+        "utils",
+        "vctrs"
+      ],
+      "Hash": "fedd9d00c2944ff00a0e2696ccf048ec"
+    },
+    "evaluate": {
+      "Package": "evaluate",
+      "Version": "0.24.0",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "methods"
+      ],
+      "Hash": "a1066cbc05caee9a4bf6d90f194ff4da"
     },
     "fansi": {
       "Package": "fansi",
@@ -75,6 +129,36 @@
         "utils"
       ],
       "Hash": "962174cf2aeb5b9eea581522286a911f"
+    },
+    "fastmap": {
+      "Package": "fastmap",
+      "Version": "1.2.0",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Hash": "aa5e1cd11c2d15497494c5292d7ffcc8"
+    },
+    "fontawesome": {
+      "Package": "fontawesome",
+      "Version": "0.5.2",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "htmltools",
+        "rlang"
+      ],
+      "Hash": "c2efdd5f0bcd1ea861c2d4e2a883a67d"
+    },
+    "fs": {
+      "Package": "fs",
+      "Version": "1.6.4",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "methods"
+      ],
+      "Hash": "15aeb8c27f5ea5161f9f6a641fafd93a"
     },
     "generics": {
       "Package": "generics",
@@ -98,29 +182,79 @@
       ],
       "Hash": "e0b3a53876554bd45879e596cdb10a52"
     },
-    "here": {
-      "Package": "here",
-      "Version": "1.0.1",
+    "highr": {
+      "Package": "highr",
+      "Version": "0.11",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
-        "rprojroot"
+        "R",
+        "xfun"
       ],
-      "Hash": "24b224366f9c2e7534d2344d10d59211"
+      "Hash": "d65ba49117ca223614f71b60d85b8ab7"
     },
-    "hms": {
-      "Package": "hms",
-      "Version": "1.1.3",
+    "htmltools": {
+      "Package": "htmltools",
+      "Version": "0.5.8.1",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
-        "lifecycle",
-        "methods",
-        "pkgconfig",
+        "R",
+        "base64enc",
+        "digest",
+        "fastmap",
+        "grDevices",
         "rlang",
-        "vctrs"
+        "utils"
       ],
-      "Hash": "b59377caa7ed00fa41808342002138f9"
+      "Hash": "81d371a9cc60640e74e4ab6ac46dcedc"
+    },
+    "irr": {
+      "Package": "irr",
+      "Version": "0.84.1",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "lpSolve"
+      ],
+      "Hash": "c059ff4d347eb2b6b799cc0e7b982fe6"
+    },
+    "jquerylib": {
+      "Package": "jquerylib",
+      "Version": "0.1.4",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "htmltools"
+      ],
+      "Hash": "5aab57a3bd297eee1c1d862735972182"
+    },
+    "jsonlite": {
+      "Package": "jsonlite",
+      "Version": "1.8.8",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "methods"
+      ],
+      "Hash": "e1b9c55281c5adc4dd113652d9e26768"
+    },
+    "knitr": {
+      "Package": "knitr",
+      "Version": "1.48",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "evaluate",
+        "highr",
+        "methods",
+        "tools",
+        "xfun",
+        "yaml"
+      ],
+      "Hash": "acf380f300c721da9fde7df115a5f86f"
     },
     "lifecycle": {
       "Package": "lifecycle",
@@ -135,18 +269,12 @@
       ],
       "Hash": "b8552d117e1b808b09a832f589b79035"
     },
-    "lubridate": {
-      "Package": "lubridate",
-      "Version": "1.9.3",
+    "lpSolve": {
+      "Package": "lpSolve",
+      "Version": "5.6.20",
       "Source": "Repository",
       "Repository": "RSPM",
-      "Requirements": [
-        "R",
-        "generics",
-        "methods",
-        "timechange"
-      ],
-      "Hash": "680ad542fbcf801442c83a6ac5a2126c"
+      "Hash": "2801c8082e89ed84cc0dbe43de850d31"
     },
     "magrittr": {
       "Package": "magrittr",
@@ -157,6 +285,27 @@
         "R"
       ],
       "Hash": "7ce2733a9826b3aeb1775d56fd305472"
+    },
+    "memoise": {
+      "Package": "memoise",
+      "Version": "2.0.1",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "cachem",
+        "rlang"
+      ],
+      "Hash": "e2817ccf4a065c5d9d7f2cfbe7c1d78c"
+    },
+    "mime": {
+      "Package": "mime",
+      "Version": "0.12",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "tools"
+      ],
+      "Hash": "18e9c28c1d3ca1560ce30658b22ce104"
     },
     "pillar": {
       "Package": "pillar",
@@ -185,66 +334,15 @@
       ],
       "Hash": "01f28d4278f15c76cddbea05899c5d6f"
     },
-    "prettyunits": {
-      "Package": "prettyunits",
-      "Version": "1.2.0",
+    "rappdirs": {
+      "Package": "rappdirs",
+      "Version": "0.3.3",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "R"
       ],
-      "Hash": "6b01fc98b1e86c4f705ce9dcfd2f57c7"
-    },
-    "progress": {
-      "Package": "progress",
-      "Version": "1.2.3",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R",
-        "R6",
-        "crayon",
-        "hms",
-        "prettyunits"
-      ],
-      "Hash": "f4625e061cb2865f111b47ff163a5ca6"
-    },
-    "purrr": {
-      "Package": "purrr",
-      "Version": "1.0.2",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R",
-        "cli",
-        "lifecycle",
-        "magrittr",
-        "rlang",
-        "vctrs"
-      ],
-      "Hash": "1cba04a4e9414bdefc9dcaa99649a8dc"
-    },
-    "readxl": {
-      "Package": "readxl",
-      "Version": "1.4.3",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R",
-        "cellranger",
-        "cpp11",
-        "progress",
-        "tibble",
-        "utils"
-      ],
-      "Hash": "8cf9c239b96df1bbb133b74aef77ad0a"
-    },
-    "rematch": {
-      "Package": "rematch",
-      "Version": "2.0.0",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Hash": "cbff1b666c6fa6d21202f07e2318d4f1"
+      "Hash": "5e3c5dc0b071b21fa128676560dbe94d"
     },
     "renv": {
       "Package": "renv",
@@ -267,45 +365,49 @@
       ],
       "Hash": "3eec01f8b1dee337674b2e34ab1f9bc1"
     },
-    "rprojroot": {
-      "Package": "rprojroot",
-      "Version": "2.0.4",
-      "Source": "Repository",
-      "Repository": "RSPM",
-      "Requirements": [
-        "R"
-      ],
-      "Hash": "4c8415e0ec1e29f3f4f6fc108bef0144"
-    },
-    "stringi": {
-      "Package": "stringi",
-      "Version": "1.8.4",
+    "rmarkdown": {
+      "Package": "rmarkdown",
+      "Version": "2.27",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "R",
-        "stats",
+        "bslib",
+        "evaluate",
+        "fontawesome",
+        "htmltools",
+        "jquerylib",
+        "jsonlite",
+        "knitr",
+        "methods",
+        "tinytex",
         "tools",
-        "utils"
+        "utils",
+        "xfun",
+        "yaml"
       ],
-      "Hash": "39e1144fd75428983dc3f63aa53dfa91"
+      "Hash": "27f9502e1cdbfa195f94e03b0f517484"
     },
-    "stringr": {
-      "Package": "stringr",
-      "Version": "1.5.1",
+    "rstudioapi": {
+      "Package": "rstudioapi",
+      "Version": "0.16.0",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Hash": "96710351d642b70e8f02ddeb237c46a7"
+    },
+    "sass": {
+      "Package": "sass",
+      "Version": "0.4.9",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
-        "R",
-        "cli",
-        "glue",
-        "lifecycle",
-        "magrittr",
-        "rlang",
-        "stringi",
-        "vctrs"
+        "R6",
+        "fs",
+        "htmltools",
+        "rappdirs",
+        "rlang"
       ],
-      "Hash": "960e2ae9e09656611e0b8214ad543207"
+      "Hash": "d53dbfddf695303ea4ad66f86e99b95d"
     },
     "tibble": {
       "Package": "tibble",
@@ -326,16 +428,31 @@
       ],
       "Hash": "a84e2cc86d07289b3b6f5069df7a004c"
     },
-    "timechange": {
-      "Package": "timechange",
-      "Version": "0.3.0",
+    "tidyselect": {
+      "Package": "tidyselect",
+      "Version": "1.2.1",
       "Source": "Repository",
       "Repository": "RSPM",
       "Requirements": [
         "R",
-        "cpp11"
+        "cli",
+        "glue",
+        "lifecycle",
+        "rlang",
+        "vctrs",
+        "withr"
       ],
-      "Hash": "c5f3c201b931cd6474d17d8700ccb1c8"
+      "Hash": "829f27b9c4919c16b593794a6344d6c0"
+    },
+    "tinytex": {
+      "Package": "tinytex",
+      "Version": "0.52",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "xfun"
+      ],
+      "Hash": "cfbad971a71f0e27cec22e544a08bc3b"
     },
     "utf8": {
       "Package": "utf8",
@@ -360,6 +477,37 @@
         "rlang"
       ],
       "Hash": "c03fa420630029418f7e6da3667aac4a"
+    },
+    "withr": {
+      "Package": "withr",
+      "Version": "3.0.0",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "R",
+        "grDevices",
+        "graphics"
+      ],
+      "Hash": "d31b6c62c10dcf11ec530ca6b0dd5d35"
+    },
+    "xfun": {
+      "Package": "xfun",
+      "Version": "0.46",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Requirements": [
+        "grDevices",
+        "stats",
+        "tools"
+      ],
+      "Hash": "00ce32f398db0415dde61abfef11300c"
+    },
+    "yaml": {
+      "Package": "yaml",
+      "Version": "2.3.9",
+      "Source": "Repository",
+      "Repository": "RSPM",
+      "Hash": "9cb28d11799d93c953f852083d55ee9e"
     }
   }
 }
