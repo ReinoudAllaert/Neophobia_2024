@@ -1,5 +1,5 @@
 #### load/install packages ####
-packages <- c('stringr', 'tidyverse', 'here', 'lubridate', 'readxl', 'purrr', 'summarytools')
+packages <- c('stringr', 'tidyverse', 'here', 'lubridate', 'readxl', 'purrr')
 for (pkg in packages) {
   if (!requireNamespace(pkg, quietly = TRUE)) {
     install.packages(pkg)
@@ -27,7 +27,6 @@ data <- rbind(data_1, data_2)
 # quick look at structure
 str(data)
 summary(data)
-dfSummary(data)
 
 
 #### preprocess BORIS data ####

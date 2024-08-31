@@ -13,7 +13,7 @@ This repository contains all data and code to reproduce the results from XXX stu
 - **.gitignore**: Specifies files and directories to be ignored by git.
 - **IRR.R**: Script for calculating inter-rater reliability (IRR) using Cohen’s Kappa for the coded behavioral data.
 - **Neophobia_2024.Rproj**: RStudio project file for the study.
-- **analysis.R**: Main analysis script where statistical models and data analysis are performed.
+- **analysis.Rmd**: Main analysis script where statistical models and data analysis are performed.
 - **plotting.R**: Script for generating plots and visualizations of the data.
 - **preprocessing.R**: Script for preprocessing the raw data before analysis.
 - **renv.lock**: Lockfile for the renv environment, ensuring the same package versions are used.
@@ -37,7 +37,7 @@ This repository contains all data and code to reproduce the results from XXX stu
    - Run `IRR.R` to prepare BORIS data of the external coder, calculate the inter-rater reliability of the behavioural coding.
 
 3. **Data Analysis**:
-   - Run `analysis.R` to perform the statistical analyses. 
+   - Run `analysis.Rmd` to perform the statistical analyses. 
 
 4. **Plotting**:
    - Run `plotting.R` to generate visualizations of the data, including figures used in the manuscript.

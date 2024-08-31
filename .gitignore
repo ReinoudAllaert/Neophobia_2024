@@ -2,3 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+analysis.pdf
+.Rprofile
+.DS_Store

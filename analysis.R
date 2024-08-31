@@ -1,4 +1,4 @@
-packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'summarytools', 'readxl', 'purrr', 'performance', 'emmeans')
+packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'readxl', 'purrr', 'performance', 'emmeans')
 
 # Check if each package is installed; if not, install it
 for (pkg in packages) {
@@ -19,7 +19,6 @@ data <- read.csv("processed_data/neophobia_data.csv", row.names=1)
 # quick look at structure
 str(data)
 summary(data)
-dfSummary(data)
 
 
 # not sure what groupID values should be during individual trials
@@ -46,31 +45,43 @@ data <- data %>%
   mutate(GroupID = ifelse(is.na(GroupID), most_frequent_group, GroupID)) %>%
   select(-most_frequent_group)
 
+data$Trial <- data$Trial -1
+
 # basic model to try
 model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
                 (1 | Bird_ID), 
               data = data)
 summary(model)
 
+check_model(model)
 
+# trial ref level change
+# remove latency 600 and compare
 
 # as described in RR
 # random effect structure too complicated for amount of data?
-enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
+enter_model <- lmer(log(Latency_to_enter) ~ Object_contrast * Context_contrast + Trial + 
                 (1 | NestID) + 
-                (1 + group_dummy | GroupID) + 
-                (1 + ind_dummy + group_dummy | Bird_ID), 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
               data = data)
 
 summary(enter_model)
 check_model(enter_model)
 
 
-eat_model <- lmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
-                   (1 | NestID) + 
-                   (1 + group_dummy | GroupID) + 
-                   (1 + ind_dummy + group_dummy | Bird_ID), 
-                 data = data)
+eat_model2 <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + 
+                   #(1 | NestID) + 
+                   (- 1 + group_dummy | GroupID) + 
+                   (- 1 + ind_dummy + group_dummy || Bird_ID),  # set corr to 0
+                 data = data) 
+
+
+latency_model <- lmer(log(Latency) ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial + 
+                    #(1 | NestID) + 
+                    (- 1 + group_dummy | GroupID) + 
+                    (- 1 + ind_dummy + group_dummy + eat_vs_leave_contrast | Bird_ID), 
+                  data = data) 
 
 summary(eat_model)
 check_model(eat_model)
@@ -90,6 +101,4 @@ check_model(zoi_model)
 # in RR we also mention analysing latencies combined
 
 multivariate_model 
-
-
 
