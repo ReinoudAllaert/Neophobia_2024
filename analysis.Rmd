@@ -244,7 +244,6 @@ summary(eat_model_group)
 summary(eat_model_alone)
 ```
 
-
 ```{r Compare eat models}
 
 anova(eat_model, eat_model2, eat_model4_boxcox)
@@ -448,4 +447,4 @@ check_model(latency_model3_boxcox_reduced_2)
 anova(latency_model3_boxcox_reduced_2, latency_model3_boxcox_reduced, latency_model3_boxcox, latency_model2, latency_model)
 ```
 
-latency_model3_boxcox_reduced seems to be the best fit, but gives warnings (contrary to reduced_2): boundary (singular) fit: see help('isSingular') Warning: Model failed to converge with 1 negative eigenvalue: -4.1e+00 The other model only gives the boundary (singular) fit warning.
+latency_model3_boxcox seems to be the best fit, but gives warnings.
