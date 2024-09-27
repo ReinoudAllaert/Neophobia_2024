@@ -455,668 +455,13 @@ latency_model3_boxcox seems to be the best fit, but gives warnings.
 
 
 
-### NOT transformed
-
-# Latency to enter 
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model)
-check_model(enter_model)
-
-```
-
-
-The random effect structure seems to be too complex for the amount of data. However, the variance for the `(Intercept)` under `NestID` is `0` and the variance for `group_dummy` under `GroupID` is `0`. This suggests that both nest as differences between groups contribute minimally to the variance in the outcome model. Let's drop both effects.
-
-```{r Enter model 2, fig.width=10, fig.height=10, dpi=300}
-enter_model2 <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model2)
-check_model(enter_model2)
-```
-
-Seems like the interaction between object and context is non-significant, let's drop it.
-
-```{r Enter model 3, fig.width=10, fig.height=10, dpi=300}
-enter_model3 <- lmer(Latency_to_enter ~ Object_contrast + Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model3)
-check_model(enter_model3)
-
-```
-
-
-Now we can compare the models
-
-```{r Enter model 3, fig.width=10, fig.height=10, dpi=300}
-
-anova(enter_model, enter_model2, enter_model3)
-
-```
-
-
-
-
-#########################################################################################################
-#########################################################################################################
-#########################################################################################################
-#########################################################################################################
-#########################################################################################################
-
-
-
-#### All models Box-Cox transformed 
-
-
-## Latency to Enter
-
-# full model boxcox 
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-
-# Load the required package
-library(MASS)
-
-# Perform the Box-Cox transformation and find the best lambda
-boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-# Calculate the 95% confidence interval for lambda
-max_log_likelihood <- max(boxcox_transform$y)
-ci_indices <- which(boxcox_transform$y > (max_log_likelihood - 1.92))  # 1.92 is the cutoff for 95% CI
-lambda_ci <- range(boxcox_transform$x[ci_indices])
-
-# Print the best lambda and the 95% confidence interval
-cat("Best lambda:", best_lambda, "\n")
-cat("95% Confidence Interval for lambda:", lambda_ci, "\n")
-
-
-data$Latency_to_enter_trans <- (data$Latency_to_enter^best_lambda - 1) / best_lambda
-
-
-enter_model_full_bc <- lmer(Latency_to_enter_trans ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model_full_bc)
-check_model(enter_model_full_bc)
-
-print(best_lambda)
-
-```
-
-
-
-# boxcox model reduced random effect structure
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-
-# Load the required package
-library(MASS)
-
-# Perform the Box-Cox transformation and find the best lambda
-boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-# Calculate the 95% confidence interval for lambda
-max_log_likelihood <- max(boxcox_transform$y)
-ci_indices <- which(boxcox_transform$y > (max_log_likelihood - 1.92))  # 1.92 is the cutoff for 95% CI
-lambda_ci <- range(boxcox_transform$x[ci_indices])
-
-# Print the best lambda and the 95% confidence interval
-cat("Best lambda:", best_lambda, "\n")
-cat("95% Confidence Interval for lambda:", lambda_ci, "\n")
-
-
-data$Latency_to_enter_trans <- (data$Latency_to_enter^best_lambda - 1) / best_lambda
-
-
-enter_model_simple_bc <- lmer(Latency_to_enter_trans ~ Object_contrast * Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model_simple_bc)
-check_model(enter_model_simple_bc)
-
-print(best_lambda)
-
-```
-
-
-# drop interaction because it is not significant
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-
-# Load the required package
-library(MASS)
-
-# Perform the Box-Cox transformation and find the best lambda
-boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-# Calculate the 95% confidence interval for lambda
-max_log_likelihood <- max(boxcox_transform$y)
-ci_indices <- which(boxcox_transform$y > (max_log_likelihood - 1.92))  # 1.92 is the cutoff for 95% CI
-lambda_ci <- range(boxcox_transform$x[ci_indices])
-
-# Print the best lambda and the 95% confidence interval
-cat("Best lambda:", best_lambda, "\n")
-cat("95% Confidence Interval for lambda:", lambda_ci, "\n")
-
-
-data$Latency_to_enter_trans <- (data$Latency_to_enter^best_lambda - 1) / best_lambda
-
-
-enter_model_simple_bc_no_interact <- lmer(Latency_to_enter_trans ~ Object_contrast + Context_contrast + Trial +
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model_simple_bc_no_interact)
-check_model(enter_model_simple_bc_no_interact)
-
-print(best_lambda)
-
-```
-
-
-
-# let's compare the boxcox models
-
-```{r Compare models}
-
-
-anova(enter_model_simple_bc, enter_model_simple_bc_no_interact)
-
-
-
-```
-
-# stick with enter_model_simple_bc and backtransform
-I am not sure yet we can make predictions like this for main effects when our model has an interaction term. 
-
-```{r Backtransform}
-library(emmeans)
-
-
-enter_model_simple_bc2 <- lmer(Latency_to_enter_trans ~ Object_contrast * Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model_simple_bc2)
-check_model(enter_model_simple_bc2)
-
-bctran <- make.tran("boxcox", -0.8686869)
-
-# Use emmeans to compute and back-transform the results
-emms_bc <- emmeans(
-  enter_model_simple_bc2,
-  specs = ~ Context_contrast | Object_contrast,
-  type = "response",
-  tran = bctran
-)
-
-# View the back-transformed results
-emms_bc
-
-
-# Compute marginal means for Context contrast
-emms_context <- emmeans(
-  enter_model_simple_bc2,
-  specs = "Context_contrast",  # Only get predictions for Context_contrast
-  type = "response",
-  tran = bctran  # Use the Box-Cox transformation for back-transformation
-)
-
-# View the predictions
-emms_context
-
-
-# Compute marginal means for Object contrast
-emms_object <- emmeans(
-  enter_model_simple_bc2,
-  specs = "Object_contrast",  # Only get predictions for Object_contrast
-  type = "response",
-  tran = bctran  # Use the Box-Cox transformation for back-transformation
-)
-
-# View the predictions
-emms_object
-
-
-
-### How to get this for trial? As it just averages the trial?
-
-# Compute marginal means for Trial
-emms_trial <- emmeans(
-  enter_model_simple_bc2,
-  specs = "Trial",  # Only get predictions for Context_contrast
-  type = "response",
-  tran = bctran  # Use the Box-Cox transformation for back-transformation
-)
-
-# View the predictions
-emms_trial
-
-```
-
-
-
-#################
-
-Let's try it with latency to eat 
-```{r }
-
-# Load the required package
-library(MASS)
-
-# Perform the Box-Cox transformation and find the best lambda
-boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial, data = data))
-best_lambda2 <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-# Calculate the 95% confidence interval for lambda
-max_log_likelihood <- max(boxcox_transform$y)
-ci_indices <- which(boxcox_transform$y > (max_log_likelihood - 1.92))  # 1.92 is the cutoff for 95% CI
-lambda_ci <- range(boxcox_transform$x[ci_indices])
-
-# Print the best lambda and the 95% confidence interval
-cat("Best lambda:", best_lambda2, "\n")
-cat("95% Confidence Interval for lambda:", lambda_ci, "\n")
-
-
-data$Latency_to_eat_trans <- (data$Latency_to_Eat^best_lambda2 - 1) / best_lambda2
-
-
-eat_model_full_bc <- lmer(Latency_to_eat_trans ~ Object_contrast * Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-
-print(best_lambda2)
-
-```
-
-```{r eat predictions}
-
-
-bctran2 <- make.tran("boxcox", -0.828)
-
-# Use emmeans to compute and back-transform the results
-emms_bc2 <- emmeans(
-  eat_model_full_bc,
-  specs = ~ Context_contrast | Object_contrast,
-  type = "response",
-  tran = bctran2
-)
-
-# View the back-transformed results
-emms_bc2
-
-
-
-```
-
-## set lambda to 0.5
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-
-lambda <- -1
-
-data$Latency_to_enter_trans2 <- (data$Latency_to_enter^lambda - 1) / lambda
-
-
-enter_model_full_bc2 <- lmer(Latency_to_enter_trans2 ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model_full_bc2)
-check_model(enter_model_full_bc2)
-
-print(lambda)
-
-
-```
-
-
-
-
-
-
-
-
-
-
-
-Get rid of interaction
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-
-boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-data$Latency_to_enter_trans <- (data$Latency_to_enter^best_lambda - 1) / best_lambda
-
-
-enter_model_simple_bc_no_interact <- lmer(Latency_to_enter_trans ~ Object_contrast + Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model_simple_bc_no_interact)
-check_model(enter_model_simple_bc_no_interact)
-
-print(best_lambda)
-
-```
-
-
-
-```{r Compare the models}
-
-anova(enter_model_full_bc, enter_model_simple_bc, enter_model_simple_bc_no_interact)
-
-```
-
-
-
-
-
-###### predictions emmeans 
-
-```{r Predict function}
-
-boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast + Context_contrast + Trial, data = data))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-data$Latency_to_Eat_trans <- (data$Latency_to_Eat^best_lambda - 1) / best_lambda
-
-
-eat_model_simple_bc_no_interact <- lmer(Latency_to_Eat_trans ~ Object_contrast * Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-
-
-library(emmeans)
-
-
-emms_bc <- emmeans(eat_model_simple_bc_no_interact, ~ Object_contrast * Context_contrast)
-
-
-# Pairwise comparisons
-pairwise_comparisons_bc <- pairs(emms_bc)
-summary(pairwise_comparisons_bc)
-
-# Convert the pairwise comparisons to a data frame
-pairwise_results_bc_df <- as.data.frame(pairwise_comparisons_bc)
-
-# Back-transform the estimates and confidence intervals
-if (best_lambda != 0) {
-  # Back-transform estimates
-  pairwise_results_bc_df$response_original <- ((best_lambda * pairwise_results_bc_df$estimate) + 1)^(1 / best_lambda)
-  
-  # Back-transform the lower and upper confidence limits
-  pairwise_results_bc_df$lower.CL_original <- ((best_lambda * pairwise_results_bc_df$estimate - 1.96 * pairwise_results_bc_df$SE) + 1)^(1 / best_lambda)
-  pairwise_results_bc_df$upper.CL_original <- ((best_lambda * pairwise_results_bc_df$estimate + 1.96 * pairwise_results_bc_df$SE) + 1)^(1 / best_lambda)
-  
-} else {
-  # If lambda = 0, use the exponential transformation
-  pairwise_results_bc_df$response_original <- exp(pairwise_results_bc_df$estimate)
-  
-  # Back-transform confidence limits
-  pairwise_results_bc_df$lower.CL_original <- exp(pairwise_results_bc_df$estimate - 1.96 * pairwise_results_bc_df$SE)
-  pairwise_results_bc_df$upper.CL_original <- exp(pairwise_results_bc_df$estimate + 1.96 * pairwise_results_bc_df$SE)
-}
-
-# Print the back-transformed pairwise comparisons
-print(pairwise_results_bc_df)
-
-
-
-```
-
-
-
-
-
-
-
-
-## Inverse model 
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-
-enter_model_inverse <- lmer(1/(Latency_to_enter) ~ Object_contrast * Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(enter_model_inverse)
-check_model(enter_model_inverse)
-
-
-```
-
-
-# lets make predictions
-
-```{r predictions}
-
-library(emmeans)
-library(marginaleffects)
-
-enter_model_inverse <- lmer(1/(Latency_to_enter) ~ Object_contrast + Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-# Get predictions using emmeans directly
-preds <- emmeans(enter_model_inverse, ~ Object_contrast, 
-                 type = "response", 
-                 tran = "inverse")
-
-# Look at the results
-preds
-
-# Get predictions using emmeans directly
-preds2 <- emmeans(enter_model_inverse, ~ Context_contrast, 
-                 type = "response", 
-                 tran = "inverse")
-
-# Look at the results
-preds2
-
-
-
-```
-
-
-
-## Latency to Eat 
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-
-boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast + Context_contrast + Trial, data = data))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-data$Latency_to_Eat_trans <- (data$Latency_to_Eat^best_lambda - 1) / best_lambda
-
-
-eat_model_full_bc <- lmer(Latency_to_Eat_trans ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(eat_model_full_bc)
-check_model(eat_model_full_bc)
-
-print(best_lambda)
-
-```
-
-
-
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-
-boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast + Context_contrast + Trial, data = data))
-best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
-
-data$Latency_to_Eat_trans <- (data$Latency_to_Eat^best_lambda - 1) / best_lambda
-
-
-eat_model_simple_bc <- lmer(Latency_to_Eat_trans ~ Object_contrast * Context_contrast + Trial + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              data = data)
-
-summary(eat_model_simple_bc)
-check_model(eat_model_simple_bc)
-
-print(best_lambda)
-
-```
-
-
-```{r Compare models}
-
-anova(eat_model_full_bc, eat_model_simple_bc)
-
-```
-
-
-
-## ZOI Duration
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##############################################################
-
-############ GLMM
-
-
-
-
-
-### 1) Latency to Enter
-
-The full model as described in the RR, includes `Object_contrast`, `Context_contrast`, and `Trial`, and a complex random effect structure:
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-eat_model_gaus <- glmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              family=gaussian(link = "log"), data = data)
-
-summary(eat_model_gaus)
-check_model(eat_model_gaus)
-
-```
-
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-enter_model_gamma <- glmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              family=Gamma(link = "log"), data = data)
-
-summary(enter_model_gamma)
-check_model(enter_model_gamma)
-
-```
-
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-enter_model_nlme <- lme(fixed = Latency_to_enter ~ Object_contrast * Context_contrast + Trial,
-                        random = ~-1 + ind_dummy + group_dummy | Bird_ID, 
-                        correlation = corAR1(form = ~ Trial|Bird_ID),
-                        data = data, method = "ML")
-
-summary(enter_model_nlme)
-check_model(enter_model_nlme)
-
-```
-
-### 2) Latency to Eat
-
-The full model as described in the RR, includes `Object_contrast`, `Context_contrast`, and `Trial`, and a complex random effect structure:
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-eat_model_gamma <- glmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              family=Gamma(link = "log"), data = data)
-
-summary(eat_model_gamma)
-check_model(eat_model_gamma)
-
-```
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-eat_model_gaussian <- glmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              family=inverse.gaussian(link = "log"), data = data)
-
-summary(eat_model_gaussian)
-check_model(eat_model_gaussian)
-
-```
-
-
-### 3) ZOI Duration
-
-The full model as described in the RR, includes `Object_contrast`, `Context_contrast`, and `Trial`, and a complex random effect structure:
-
-```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-zoi_model_gamma <- glmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
-                (1 | NestID) + 
-                (-1 + group_dummy | GroupID) + 
-                (-1 +  ind_dummy + group_dummy | Bird_ID), 
-              family=Gamma(link = "log"), data = data)
-
-summary(enter_model_zoi)
-check_model(enter_model_zoi)
-
-```
-
-
-
-
-
 
 
 ##############################################################################
 ##############################################################################
 ##############################################################################
 
-## Let's look at some descriptives 
+## Some descriptives
 
 
 ```{r Descriptives}
@@ -1216,9 +561,8 @@ print("Time Spent in ZOI - Stats (Context):")
 print(stats_context_time_ZOI)
 
 
-
-
 ```
+
 
 
 # Plot the Object x Context interaction
@@ -1269,4 +613,721 @@ print(plot_time_ZOI)
 
 
 ```
+
+
+
+##########################################################################################################
+##########################################################################################################
+
+
+# Statistical analysis
+
+### NOT transformed
+
+### Latency to enter 
+
+```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
+enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model)
+check_model(enter_model)
+
+```
+
+
+Remove complex random effect structure
+
+```{r Enter model 2, fig.width=10, fig.height=10, dpi=300}
+enter_model2 <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model2)
+check_model(enter_model2)
+```
+
+
+Drop interaction
+
+```{r Enter model 3, fig.width=10, fig.height=10, dpi=300}
+enter_model3 <- lmer(Latency_to_enter ~ Object_contrast + Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model3)
+check_model(enter_model3)
+
+```
+
+
+Now we can compare the models
+
+```{r Compare models}
+
+anova(enter_model, enter_model2, enter_model3)
+
+```
+
+
+
+
+### Latency to Eat
+
+```{r Eat model 1, fig.width=10, fig.height=10, dpi=300}
+eat_model <- lmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(eat_model)
+check_model(eat_model)
+
+```
+
+
+Remove complex random effect structure
+
+```{r Eat model 2, fig.width=10, fig.height=10, dpi=300}
+eat_model2 <- lmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(eat_model2)
+check_model(eat_model2)
+```
+
+
+Now we can compare the models
+
+```{r Compare models}
+
+anova(eat_model, eat_model2)
+
+```
+
+
+
+### ZOI Duration 
+
+```{r Zoi model 1, fig.width=10, fig.height=10, dpi=300}
+zoi_model <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(zoi_model)
+check_model(zoi_model)
+
+```
+
+
+Remove complex random effect structure
+
+```{r Zoi model 2, fig.width=10, fig.height=10, dpi=300}
+zoi_model2 <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(zoi_model2)
+check_model(zoi_model2)
+```
+
+
+Now we can compare the models
+
+```{r Compare models}
+
+anova(zoi_model, zoi_model2)
+
+```
+
+
+
+
+##########################################################################################################
+##########################################################################################################
+
+# Try some GLMM to potentially avoid Box-Cox 
+
+### Latency to Enter
+
+The full model as described in the RR:
+
+```{r Enter GLMM, fig.width=10, fig.height=10, dpi=300}
+enter_model_gaus <- glmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              family=gaussian(link = "log"), data = data)
+
+summary(enter_model_gaus)
+check_model(enter_model_gaus)
+
+```
+
+
+```{r Enter GLMM, fig.width=10, fig.height=10, dpi=300}
+enter_model_gamma <- glmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              family=Gamma(link = "log"), data = data)
+
+summary(enter_model_gamma)
+check_model(enter_model_gamma)
+
+```
+
+
+### Latency to Eat
+
+The full model as described in the RR:
+
+```{r Enter GLMM, fig.width=10, fig.height=10, dpi=300}
+eat_model_gaus <- glmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              family=gaussian(link = "log"), data = data)
+
+summary(eat_model_gaus)
+check_model(eat_model_gaus)
+
+```
+
+
+```{r Enter GLMM, fig.width=10, fig.height=10, dpi=300}
+eat_model_gamma <- glmer(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              family=Gamma(link = "log"), data = data)
+
+summary(eat_model_gamma)
+check_model(eat_model_gamma)
+
+```
+
+
+
+### ZOI Duration
+
+The full model as described in the RR:
+
+```{r Enter GLMM, fig.width=10, fig.height=10, dpi=300}
+zoi_model_gaus <- glmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              family=gaussian(link = "log"), data = data)
+
+summary(zoi_model_gaus)
+check_model(zoi_model_gaus)
+
+```
+
+
+```{r Enter GLMM, fig.width=10, fig.height=10, dpi=300}
+enter_model_gamma <- glmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              family=Gamma(link = "log"), data = data)
+
+summary(zoi_model_gamma)
+check_model(zoi_model_gamma)
+
+```
+
+
+Doesn't really improve the data. 
+
+
+
+##########################################################################################################
+##########################################################################################################
+
+
+## All models Box-Cox transformed 
+
+### Latency to Enter
+
+```{r compute lambda}
+
+
+# Load the required package
+library(MASS)
+
+# Perform the Box-Cox transformation and find the best lambda
+boxcox_transform_enter <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial, data = data))
+best_lambda_enter <- boxcox_transform_enter$x[which.max(boxcox_transform_enter$y)]
+
+# Calculate the 95% confidence interval for lambda
+max_log_likelihood_enter <- max(boxcox_transform_enter$y)
+ci_indices_enter <- which(boxcox_transform_enter$y > (max_log_likelihood_enter - 1.96)) 
+lambda_ci_enter <- range(boxcox_transform_enter$x[ci_indices_enter])
+
+# Print the best lambda and the 95% confidence interval
+cat("Best lambda:", best_lambda_enter, "\n")
+cat("95% Confidence Interval for lambda:", lambda_ci_enter, "\n")
+print(best_lambda_enter)
+
+data$Latency_to_enter_trans <- (data$Latency_to_enter^best_lambda_enter - 1) / best_lambda_enter
+
+
+```
+
+
+# boxcox full model
+
+```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
+
+enter_model_bc1 <- lmer(Latency_to_enter_trans ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model_bc1)
+check_model(enter_model_bc1)
+
+
+
+```
+
+
+
+# boxcox model reduced random effect structure
+
+```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
+
+enter_model_bc2 <- lmer(Latency_to_enter_trans ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model_bc2)
+check_model(enter_model_bc2)
+
+
+```
+
+
+# drop interaction because it is not significant
+
+```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
+
+enter_model_bc3 <- lmer(Latency_to_enter_trans ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model_bc3)
+check_model(enter_model_bc3)
+
+
+```
+
+
+
+# let's compare the boxcox models
+
+```{r Compare models}
+
+
+anova(enter_model_bc1, enter_model_bc2, enter_model_bc3)
+
+
+
+```
+
+
+
+# Backtransform via predictions
+
+Not sure yet whether the predictions work like that especially if we can make predictions like this for main effects when our model has an interaction term (R gives a warning, that the results for the main effects may be misleading due to the interaction). 
+
+```{r Backtransform}
+library(emmeans)
+
+bctran_enter <- make.tran("boxcox", -0.8686869)
+
+# Use emmeans to compute and back-transform the results
+emms_bc <- emmeans(
+  enter_model_bc2,
+  specs = ~ Context_contrast | Object_contrast,
+  type = "response",
+  tran = bctran_enter
+)
+
+# View the back-transformed results
+emms_bc
+
+
+
+# Compute marginal means for Context contrast
+emms_context <- emmeans(
+  enter_model_bc2,
+  specs = "Context_contrast",  # Only get predictions for Context_contrast
+  type = "response",
+  tran = bctran_enter  # Use the Box-Cox transformation for back-transformation
+)
+
+# View the predictions
+emms_context
+
+
+# Compute marginal means for Object contrast
+emms_object <- emmeans(
+  enter_model_bc2,
+  specs = "Object_contrast",  # Only get predictions for Object_contrast
+  type = "response",
+  tran = bctran_enter  # Use the Box-Cox transformation for back-transformation
+)
+
+# View the predictions
+emms_object
+
+
+
+### Trial - compute it as a factor first. 
+# Otherwise it is treated as continuous and just predicts it for the average trial (3.5) 
+
+data$Trial <- as.factor(data$Trial)
+
+enter_model_bc2 <- lmer(
+  Latency_to_enter_trans ~ Object_contrast * Context_contrast + factor(Trial) + 
+  (-1 + ind_dummy + group_dummy | Bird_ID), 
+  data = data
+)
+
+# Compute marginal means for Trial
+emms_trial <- emmeans(
+  enter_model_bc2,
+  specs = "Trial",  # just averages the trial then
+  type = "response",
+  tran = bctran_enter  # Use the Box-Cox transformation for back-transformation
+)
+
+# View the predictions
+emms_trial
+
+```
+
+
+
+
+########################################################################################################
+
+
+
+
+### Latency to Eat
+
+```{r Compute lambda}
+# Load the required package
+library(MASS)
+
+# Perform the Box-Cox transformation and find the best lambda
+boxcox_transform_eat <- boxcox(lm(Latency_to_Eat ~ Object_contrast + Context_contrast + Trial, data = data))
+best_lambda_eat <- boxcox_transform_eat$x[which.max(boxcox_transform_eat$y)]
+
+# Calculate the 95% confidence interval for lambda
+max_log_likelihood_eat <- max(boxcox_transform_eat$y)
+ci_indices_eat <- which(boxcox_transform_eat$y > (max_log_likelihood_eat - 1.96))  
+lambda_ci_eat <- range(boxcox_transform_eat$x[ci_indices_eat])
+
+# Print the best lambda and the 95% confidence interval
+cat("Best lambda:", best_lambda_eat, "\n")
+cat("95% Confidence Interval for lambda:", lambda_ci_eat, "\n")
+print(best_lambda_eat)
+
+data$Latency_to_eat_trans <- (data$Latency_to_Eat^best_lambda_eat - 1) / best_lambda_eat
+
+```
+
+
+```{r Eat BC model 1, fig.width=10, fig.height=10, dpi=300}
+
+# Model
+
+eat_model_bc1 <- lmer(Latency_to_eat_trans ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(eat_model_bc1)
+check_model(eat_model_bc1)
+
+
+```
+
+
+
+# boxcox model reduced random effect structure
+
+```{r Eat BC model 2, fig.width=10, fig.height=10, dpi=300}
+
+eat_model_bc2 <- lmer(Latency_to_eat_trans ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(eat_model_bc2)
+check_model(eat_model_bc2)
+
+
+```
+
+
+
+# let's compare the boxcox models
+
+```{r Compare models}
+
+anova(eat_model_bc1, eat_model_bc2)
+
+```
+
+
+
+# Backtransform via predictions
+
+
+```{r Backtransform}
+library(emmeans)
+
+
+bctran_eat <- make.tran("boxcox", -0.8686869) # seems a bit odd latency to enter and eat have the same lambda?
+
+# Use emmeans to compute and back-transform the results
+emms_bc_eat <- emmeans(
+  eat_model_bc2,
+  specs = ~ Context_contrast | Object_contrast,
+  type = "response",
+  tran = bctran_eat
+)
+
+# View the back-transformed results
+emms_bc_eat
+
+
+
+# Compute marginal means for Context contrast
+emms_context_eat <- emmeans(
+  eat_model_bc2,
+  specs = "Context_contrast",  # Only get predictions for Context_contrast
+  type = "response",
+  tran = bctran_eat  # Use the Box-Cox transformation for back-transformation
+)
+
+# View the predictions
+emms_context_eat
+
+
+# Compute marginal means for Object contrast
+emms_object_eat <- emmeans(
+  eat_model_bc2,
+  specs = "Object_contrast",  # Only get predictions for Object_contrast
+  type = "response",
+  tran = bctran_eat  # Use the Box-Cox transformation for back-transformation
+)
+
+# View the predictions
+emms_object_eat
+
+
+
+### Trial - compute it as a factor first. 
+# Otherwise it is treated as continuous and just predicts it for the average trial (3.5) 
+
+data$Trial <- as.factor(data$Trial)
+
+eat_model_bc2 <- lmer(
+  Latency_to_eat_trans ~ Object_contrast * Context_contrast + factor(Trial) + 
+  (-1 + ind_dummy + group_dummy | Bird_ID), 
+  data = data
+)
+
+# Compute marginal means for Trial
+emms_trial_eat <- emmeans(
+  eat_model_bc2,
+  specs = "Trial",  # just averages the trial then
+  type = "response",
+  tran = bctran_eat  # Use the Box-Cox transformation for back-transformation
+)
+
+# View the predictions
+emms_trial_eat
+
+```
+
+
+
+########################################################################################################
+
+
+
+
+### ZOI Duration 
+
+```{r Zoi model 1, fig.width=10, fig.height=10, dpi=300}
+
+# Load the required package
+library(MASS)
+
+data$Zoi_duration_adj <- data$Zoi_duration + 0.1 # add a small constant because Box-Cox cannot be done on 0s
+
+# Perform the Box-Cox transformation and find the best lambda
+boxcox_transform_zoi <- boxcox(lm(Zoi_duration_adj ~ Object_contrast + Context_contrast + Trial, data = data))
+best_lambda_zoi <- boxcox_transform_zoi$x[which.max(boxcox_transform_zoi$y)]
+
+# Calculate the 95% confidence interval for lambda
+max_log_likelihood_zoi <- max(boxcox_transform_zoi$y)
+ci_indices_zoi <- which(boxcox_transform_zoi$y > (max_log_likelihood_zoi - 1.96))
+lambda_ci_zoi <- range(boxcox_transform_zoi$x[ci_indices_zoi])
+
+# Print the best lambda and the 95% confidence interval
+cat("Best lambda:", best_lambda_zoi, "\n")
+cat("95% Confidence Interval for lambda:", lambda_ci_zoi, "\n")
+print(best_lambda_zoi)
+
+data$zoi_duration_trans <- (data$Zoi_duration_adj^best_lambda_zoi - 1) / best_lambda_zoi
+
+```
+
+
+# boxcox full model
+
+```{r Model}
+
+zoi_model_bc1 <- lmer(zoi_duration_trans ~ Object_contrast * Context_contrast + Trial + 
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(zoi_model_bc1)
+check_model(zoi_model_bc1)
+
+
+```
+
+
+
+# boxcox model reduced random effect structure
+
+```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
+
+zoi_model_bc2 <- lmer(zoi_duration_trans ~ Object_contrast * Context_contrast + Trial + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(zoi_model_bc2)
+check_model(zoi_model_bc2)
+
+
+```
+
+
+# let's compare the boxcox models
+
+```{r Compare models}
+
+anova(zoi_model_bc1, zoi_model_bc2)
+
+```
+
+
+
+# Backtransform via predictions
+
+
+```{r Backtransform}
+library(emmeans)
+
+
+bctran_zoi <- make.tran("boxcox", 0.3030303) 
+
+# Use emmeans to compute and back-transform the results
+emms_bc_zoi <- emmeans(
+  zoi_model_bc2,
+  specs = ~ Context_contrast | Object_contrast,
+  type = "response",
+  tran = bctran_zoi
+)
+
+# View the back-transformed results
+emms_bc_zoi
+
+
+
+# Compute marginal means for Context contrast
+emms_context_zoi <- emmeans(
+  zoi_model_bc2,
+  specs = "Context_contrast",  # Only get predictions for Context_contrast
+  type = "response",
+  tran = bctran_zoi  # Use the Box-Cox transformation for back-transformation
+)
+
+# View the predictions
+emms_context_zoi
+
+
+# Compute marginal means for Object contrast
+emms_object_zoi <- emmeans(
+  zoi_model_bc2,
+  specs = "Object_contrast",  # Only get predictions for Object_contrast
+  type = "response",
+  tran = bctran_zoi  # Use the Box-Cox transformation for back-transformation
+)
+
+# View the predictions
+emms_object_zoi
+
+
+
+### Trial - compute it as a factor first. 
+# Otherwise it is treated as continuous and just predicts it for the average trial (3.5) 
+
+data$Trial <- as.factor(data$Trial)
+
+zoi_model_bc2 <- lmer(
+  zoi_duration_trans ~ Object_contrast * Context_contrast + factor(Trial) + 
+  (-1 + ind_dummy + group_dummy | Bird_ID), 
+  data = data
+)
+
+
+# Compute marginal means for Trial
+emms_trial_zoi <- emmeans(
+  zoi_model_bc2,
+  specs = "Trial",  # compute it as a factor before 
+  type = "response",
+  tran = bctran_zoi  # Use the Box-Cox transformation for back-transformation
+)
+
+# View the predictions
+emms_trial_zoi
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
