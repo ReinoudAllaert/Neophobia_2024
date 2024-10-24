@@ -1,6 +1,7 @@
 ---
 title: "Neophobia analysis"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
 ---
@@ -541,6 +542,19 @@ predicted_zoi_interaction$backtransformed_response <- back_transform_log(predict
 
 # Print the back-transformed marginal means
 print(predicted_zoi_interaction)
+
+emms_trial_baseline_zoi <- emmeans(
+  zoi_model_log,         # The log-transformed ZOI model
+  specs = ~ Trial,        # Get marginal means for each trial
+  at = list(Trial = 0:7), # Specify the range of trials (0 to 7)
+  type = "response",      # Return back-transformed (response scale) values
+  tran = "log"            # Back-transform the log-transformed ZOI durations
+)
+
+# Print the back-transformed marginal means for trials
+print(emms_trial_baseline_zoi)
+# Compare each trial to Trial 0 (the baseline)
+contrast(emms_trial_baseline_zoi, "trt.vs.ctrl", ref = 1)
 
 # Random effects
 random_effects_variances <- as.data.frame(VarCorr(zoi_model_log))
