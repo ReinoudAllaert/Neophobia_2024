@@ -1,9 +1,9 @@
 ---
 title: "Neophobia analysis"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 ## Setup
@@ -171,6 +171,17 @@ Comparing the different models, the boxcox transfromed comes out as best. Now le
 ```{r Backtransform, fig.width=10, fig.height=10, dpi=300}
 ## First the fixed effects
 bctran_enter <- make.tran("boxcox", best_lambda) 
+
+emms_intercept <- emmeans(
+  enter_model4_boxcox,
+  specs = ~ 1,  # Compute overall mean, equivalent to intercept back-transformation
+  at = list(Context_contrast = 0, Object_contrast = 0, Trial = 0),  # Set to baseline values
+  type = "response",
+  tran = bctran_enter  # Back-transform using Box-Cox transformation
+)
+
+# Print back-transformed intercept value
+print(emms_intercept)
 
 
 # Compute marginal means for Context_contrast
@@ -350,43 +361,6 @@ anova(enter_model4_boxcox, enter_model_reduced)
 
 ```
 
-**So in conclusion:**
-
--   **Effect of Context_contrast:**
-
-    -   **Context -0.5 (Individual):** The average latency to approach was **2.07 seconds**.
-    -   **Context 0.5 (Group):** The back-transformed average latency to approach was **1.91 seconds**.
-
-    On average, birds took **less time to approach** when in a group compared to when they were alone. Confidence intervals for these estimates do not overlap:
-
-    -   Individual CI: [1.91, 2.26]
-    -   Group CI: [1.80, 2.03]
-
--   **Effect of Object_contrast:**
-
-    -   **Object -0.5 (Control):** The back-transformed average latency to approach was **1.96 seconds**.
-    -   **Object 0.5 (Novel):** The back-transformed average latency to approach was **2.01 seconds**.
-
-    Birds took slightly longer to enter in novel conditions compared to control conditions. However, this was **not significant**. Confidence intervals overlap:
-
-    -   Control CI: [1.84, 2.10]
-    -   Novel CI: [1.88, 2.16]
-
--   **Effect of Trial:**
-
-    1.  **Trial 0:** Average latency was **2.94 seconds**.
-    2.  **Trial 7:** Average latency was **1.49 seconds**.
-
-    Continuous decrease in latency from **Trial 0** to **Trial 7**.
-
--   **Variance:**
-
-    -   Original variance in the **individual condition** (Box-Cox transformed scale): 0.0178 seconds² (SD: 0.1336 seconds)
-    -   Back-transformed variance in the **individual condition**: 19.38 seconds² (SD: 4.40 seconds)
-    -   Original variance in the **group condition** (Box-Cox transformed scale): 0.0057 seconds² (SD: 0.0753 seconds)
-    -   Back-transformed variance in the **group condition**: 2.72 seconds² (SD: 1.65 seconds)
-
-    The variance in the individual condition is significantly higher than in the group condition. This result suggests that birds are more consistent when in a group. This was confirmed by the **likelihood ratio test** between the full model (with separate variances for the individual and group conditions) and the reduced model (with a single variance). The full model provided a significantly better fit (p = 0.01063), indicating that the difference in variance between the two conditions is statistically significant.
 
 ### 2) Latency to Eat Model
 
@@ -442,12 +416,29 @@ anova(eat_model_reduced, eat_model4_boxcox)
 
 # Indeed the full model is not better, so lets continue with the reduved model
 
+# posthoc interaction
+posthoc_interaction <- emmeans(eat_model_reduced, pairwise ~ Object_contrast * Context_contrast)
+
+# Display the results
+summary(posthoc_interaction)
+
 ```
 
 Now backtransfomr:
 
 ```{r Backtransform2, fig.width=10, fig.height=10, dpi=300}
-# Ficed effects
+# Ficed effects$$
+emms_intercept <- emmeans(
+  eat_model_reduced,
+  specs = ~ 1,  # Compute overall mean, equivalent to intercept back-transformation
+  at = list(Context_contrast = 0, Object_contrast = 0, Trial = 0),  # Set to baseline values
+  type = "response",
+  tran = bctran_enter  # Back-transform using Box-Cox transformation
+)
+
+# Print back-transformed intercept value
+print(emms_intercept)
+
 # Compute marginal means for the interaction between Object_contrast and Context_contrast, the only interesting fixed effect to look at for this model
 emms_interaction_eat <- emmeans(
   eat_model_reduced,
@@ -461,33 +452,6 @@ print(emms_interaction_eat)
 
 ```
 
-**So in conclusion:**
-
--   **Effect of Context_contrast:**
-
-    -   **Context -0.5 (Individual):** The back-transformed average latency to eat was **5.20 seconds**.
-    -   **Context 0.5 (Group):** The back-transformed average latency to eat was **2.96 seconds**.
-
-    On average, birds took **less time to eat** when in a group compared to when they were alone. This effect was statistically significant (p \< 2e-16), and the confidence intervals for these estimates do not overlap:
-
-    -   Individual CI: [4.58, 6.00]
-    -   Group CI: [2.73, 3.22]
-
--   **Effect of Object_contrast:**
-
-    -   **Object -0.5 (Control):** The back-transformed average latency to eat was **5.20 seconds** (in the individual context) and **2.96 seconds** (in the group context).
-    -   **Object 0.5 (Novel):** The back-transformed average latency to eat was **9.81 seconds** (in the individual context) and **3.52 seconds** (in the group context).
-
-    Birds took significantly longer to eat in the presence of a **novel object**, and this effect was modified by the social context. In the **individual context**, the latency to eat was much higher for the novel object compared to the control object (significant interaction p = 0.0149). In the group context, this effect was less pronounced. The confidence intervals for these estimates do not overlap:
-
-    -   Novel (Individual) CI: [7.93, 12.72]
-    -   Control (Individual) CI: [4.58, 6.00]
-    -   Novel (Group) CI: [3.21, 3.89]
-    -   Control (Group) CI: [2.73, 3.22]
-
--   **Effect of Trial:**
-
-    -   The trial effect was **not significant** (p = 0.5904), indicating that the birds' latency to eat did not change significantly over time. So birds did not become desensitized to the novelty.
 
 ### 3) Time spent in the zone of interest
 
@@ -517,6 +481,12 @@ zoi_model_log <- lmer(
 # Summarize the model
 summary(zoi_model_log)
 check_model(zoi_model_log)
+
+# posthoc interaction
+posthoc_interaction <- emmeans(zoi_model_log, pairwise ~ Object_contrast * Context_contrast)
+
+# Display the results
+summary(posthoc_interaction)
 ```
 
 Comparing the different models, the log comes out as best
@@ -688,88 +658,6 @@ zoi_model_log_reduced <- lmer(
 anova(zoi_model_log_full, zoi_model_log_reduced)
 
 ```
-
-**So in conclusion:**
-
--   **Effect of Context_contrast:**
-
-    -   **Control object in the individual condition:**
-        -   Non-back-transformed ZOI duration: **4.59** seconds.
-
-        -   Back-transformed ZOI duration: **98.4** seconds.
-
-    ```{=html}
-    <!-- -->
-    ```
-    -   **Control object in the group condition:**
-
-        -   Non-back-transformed ZOI duration: **4.38** seconds.
-
-        -   Back-transformed ZOI duration: **80.2** seconds.
-
-    -   **Novel object in the individual condition:**
-
-        -   Non-back-transformed ZOI duration: **3.66** seconds.
-
-        -   Back-transformed ZOI duration: **38.8** seconds.
-
-    -   **Novel object in the group condition:**
-
-        -   Non-back-transformed ZOI duration: **4.72** seconds.
-
-        -   Back-transformed ZOI duration: **111.8** seconds.
-
-    There was a significant interaction between object type and social context. Birds spent more time in the ZOI when exposed to novel objects in groups, compared to when alone, while they spent more time in the ZOI with control objects when alone than in groups. This interaction was statistically significant (**p \< 0.00001**).
-
-    **Effect of Trial:**
-
-    -   **Trial 0:**
-
-        -   Non-back-transformed ZOI duration: **4.11** seconds.
-
-        -   Back-transformed ZOI duration: **60** seconds.
-
-    -   **Trial 7:**
-
-        -   Non-back-transformed ZOI duration: **4.81** seconds.
-
-        -   Back-transformed ZOI duration: **94.9** seconds.
-
-    ZOI duration increased steadily over time, with each trial showing progressively longer ZOI duration. The confidence intervals for the trials were:
-
-    -   **Trial 0 CI:** [3.86, 4.36] (Back-transformed: 60 seconds).
-
-    -   **Trial 7 CI:** [4.32, 4.81] (Back-transformed: 94.9 seconds).
-
-    Significant differences were found between trial 0 and all other trials (**p = 0.0321**).
-
-    **Variance:**
-
-    -   **Variance in the individual condition (Control):**
-
-        -   Non-back-transformed variance: **0.73** seconds² (SD: **0.85** seconds).
-
-        -   Back-transformed variance: **1728** seconds² (SD: **41.57** seconds).
-
-    -   **Variance in the group condition (Control):**
-
-        -   Non-back-transformed variance: **0.18** seconds² (SD: **0.43** seconds).
-
-        -   Back-transformed variance: **14317** seconds² (SD: **119.65** seconds).
-
-    -   **Variance in the individual condition (Novel):**
-
-        -   Non-back-transformed variance: **1.18** seconds² (SD: **1.09** seconds).
-
-        -   Back-transformed variance: **11077** seconds² (SD: **105.25** seconds).
-
-    -   **Variance in the group condition (Novel):**
-
-        -   Non-back-transformed variance: **0.18** seconds² (SD: **0.43** seconds).
-
-        -   Back-transformed variance: **7367** seconds² (SD: **85.83** seconds).
-
-    Variance was higher in group settings, especially when birds were exposed to novel objects. The likelihood ratio test indicated that the full model, with separate random effects for individual and group conditions, fit the data significantly better than the reduced model with a single random effect.Multivariate analysis
 
 Now fit a multivariate model:
 
