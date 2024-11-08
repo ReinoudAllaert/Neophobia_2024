@@ -805,7 +805,7 @@ plot_latency_enter <- ggplot(summary_latency_enter, aes(x = Context, y = mean_va
   geom_bar(stat = "identity", position = position_dodge(), width = 0.6) + 
   geom_errorbar(aes(ymin = mean_value - se_value, ymax = mean_value + se_value), 
                 width = 0.2, position = position_dodge(0.6)) + 
-  labs(x = "", y = "Mean Latency (s)", title = "Latency to Enter") + 
+  labs(x = "", y = "Mean latency (s)", title = "Latency to enter") + 
   theme_classic() + 
   theme(axis.text.x = element_text(angle = 45, hjust = 1, , size = 12), 
         plot.title = element_text(hjust = 0.5, size = 14), 
@@ -829,10 +829,10 @@ plot_variable_with_double_brackets <- function(data, var_name, y_label) {
 }
 
 # Plot Latency to Eat
-plot_latency_eat <- plot_variable_with_double_brackets(summary_latency_eat, "Latency to Eat", "Mean Latency (s)")
+plot_latency_eat <- plot_variable_with_double_brackets(summary_latency_eat, "Latency to eat", "Mean latency (s)")
 
 # Plot Time Spent in ZOI
-plot_time_ZOI <- plot_variable_with_double_brackets(summary_time_ZOI, "ZOI Duration", "Mean Time (s)")
+plot_time_ZOI <- plot_variable_with_double_brackets(summary_time_ZOI, "ZOI duration", "mean Time (s)")
 
 # Combine plots using patchwork
 combined_plot <- (plot_latency_enter | plot_latency_eat | plot_time_ZOI) + 

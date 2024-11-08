@@ -85,44 +85,58 @@ combined_plot_1 <- (plot_latency_enter | plot_latency_eat | plot_time_ZOI) +
 print(combined_plot_1)
 
 
-# Now make a plot of the difference sores
-# Summarise data for mean and standard error calculations
-# Load necessary libraries
-library(ggplot2)
-library(dplyr)
-library(patchwork)
+data <- read.csv("processed_data/neophobia_data.csv", row.names = 1)
 
-
-
-# Calculate summary stats (mean and standard error) for the unscaled data
-data_summary <- data_delta %>%
-  group_by(Context) %>%
+# Calculate delta values
+data_delta <- data %>%
+  group_by(Bird_ID, Context) %>%
   summarise(
-    mean_enter = mean(Latency_to_enter_delta, na.rm = TRUE),
-    se_enter = sd(Latency_to_enter_delta, na.rm = TRUE) / sqrt(n()),
-    
-    mean_eat = mean(Latency_to_eat_delta, na.rm = TRUE),
-    se_eat = sd(Latency_to_eat_delta, na.rm = TRUE) / sqrt(n()),
-    
-    mean_zoi = -1*mean(ZOI_duration_delta, na.rm = TRUE),
-    se_zoi = sd(ZOI_duration_delta, na.rm = TRUE) / sqrt(n())
+    Latency_to_enter_delta = sum(Latency_to_enter[Object == "novel"]) - sum(Latency_to_enter[Object == "control"]),
+    Latency_to_eat_delta = sum(Latency_to_Eat[Object == "novel"]) - sum(Latency_to_Eat[Object == "control"]),
+    ZOI_duration_delta = sum(Zoi_duration[Object == "novel"]) - sum(Zoi_duration[Object == "control"])
   ) %>%
-  mutate(Context = factor(Context, levels = c("individual", "group")))
+  ungroup()
 
-# Set y-limits based on the data range to provide consistent scaling
-max_y_limit <- max(abs(data_summary$mean_enter + data_summary$se_enter), 
-                   abs(data_summary$mean_eat + data_summary$se_eat), 
-                   abs(data_summary$mean_zoi + data_summary$se_zoi))
+# Prepare the data to ensure Bird_ID and Context are factors
+plot_data <- data_delta %>%
+  mutate(
+    Bird_ID = as.factor(Bird_ID),
+    Context = factor(Context, levels = c("individual", "group"))
+  )
 
-plot_delta_variable <- function(data, mean_var, se_var, title) {
-  ggplot(data, aes(x = Context, y = .data[[mean_var]], group = 1)) +
-    geom_line(color = "black") +
-    geom_point(size = 3, color = "black") +
-    geom_errorbar(aes(ymin = .data[[mean_var]] - .data[[se_var]], ymax = .data[[mean_var]] + .data[[se_var]]), 
-                  width = 0.2) +
-    geom_hline(yintercept = 0, linetype = "dotted", color = "grey") +  # Add dotted line at y = 0
-    labs(title = title, x = NULL, y = NULL) +  # Remove individual y-axis labels
-    ylim(-max_y_limit, max_y_limit) +  # Set symmetrical y-limits
+# Invert ZOI duration delta if necessary
+plot_data$ZOI_duration_delta <- -1 * plot_data$ZOI_duration_delta
+
+# Function to create individual line plots with symmetrical y-limits and a mean line
+plot_delta_variable_as_line <- function(data, var, title) {
+  max_val <- max(abs(data[[var]]), na.rm = TRUE)
+  
+  # Calculate mean for each context
+  mean_data <- data %>%
+    group_by(Context) %>%
+    summarise(mean_value = mean(.data[[var]], na.rm = TRUE))
+  
+  ggplot(data, aes(x = Context, y = .data[[var]], group = Bird_ID)) +
+    # Individual lines for each bird
+    geom_line(color = "darkgrey", linetype = "dashed", size = 0.5) +
+    # Mean line (preventing inheritance of Bird_ID)
+    geom_line(
+      data = mean_data,
+      aes(x = Context, y = mean_value, group = 1),
+      color = "black",
+      size = 1,
+      inherit.aes = FALSE
+    ) +
+    # Mean points (preventing inheritance of Bird_ID)
+    geom_point(
+      data = mean_data,
+      aes(x = Context, y = mean_value, group = 1),
+      color = "black",
+      size = 3,
+      inherit.aes = FALSE
+    ) +
+    labs(title = title, x = NULL, y = NULL) +
+    ylim(-max_val, max_val) +
     theme_classic() +
     theme(
       axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
@@ -132,31 +146,83 @@ plot_delta_variable <- function(data, mean_var, se_var, title) {
     )
 }
 
+# Create individual line plots for each dependent variable with symmetrical y-limits
+plot_latency_enter_line <- plot_delta_variable_as_line(
+  plot_data,
+  "Latency_to_enter_delta",
+  "Latency to enter"
+)
+plot_latency_eat_line <- plot_delta_variable_as_line(
+  plot_data,
+  "Latency_to_eat_delta",
+  "Latency to eat"
+)
+plot_zoi_duration_line <- plot_delta_variable_as_line(
+  plot_data,
+  "ZOI_duration_delta",
+  "Inverted ZOI duration"
+)
 
-# Create individual plots with the scaled summary data
-plot_latency_enter <- plot_delta_variable(data_summary, "mean_enter", "se_enter", "")
-plot_latency_eat <- plot_delta_variable(data_summary, "mean_eat", "se_eat", "")
-plot_zoi_duration <- plot_delta_variable(data_summary, "mean_zoi", "se_zoi", "")
-
-# Combine plots using patchwork with a common y-axis label
-combined_plot_scaled <- (plot_latency_enter | plot_latency_eat | plot_zoi_duration) +
+# Combine the individual line plots side by side
+combined_line_plots <- (plot_latency_enter_line | plot_latency_eat_line | plot_zoi_duration_line) +
   plot_layout(guides = 'collect') +
   plot_annotation(tag_levels = 'A') &
   theme(plot.tag.position = "bottom") &
+  labs(y = expression(atop("Neophobic response",
+                           paste(plain("Less neophobic") * phantom("   ") * plain("More neophobic")))))
+
+# Function to create boxplots in black and white with manually specified y-axis limits
+plot_delta_variable_as_boxplot <- function(data, var, title, y_limits) {
+  ggplot(data, aes(x = Context, y = .data[[var]])) +
+    geom_boxplot(fill = "white", color = "black", outlier.shape = NA) +
+    geom_hline(yintercept = 0, linetype = "dotted", color = "grey") +
+    labs(title = title, x = NULL, y = NULL) +
+    ylim(y_limits[1], y_limits[2]) +
+    theme_classic() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+      plot.title = element_text(hjust = 0.5, size = 14),
+      axis.title = element_text(size = 12),
+      legend.position = "none"
+    )
+}
+
+# Set y-axis limits for each boxplot subplot manually
+y_limits_latency_enter <- c(-20, 20)
+y_limits_latency_eat <- c(-1200, 1200)
+y_limits_zoi_duration <- c(-600, 600)
+
+# Create boxplots for each dependent variable with custom y-axis limits
+plot_latency_enter_boxplot <- plot_delta_variable_as_boxplot(
+  plot_data,
+  "Latency_to_enter_delta",
+  "Latency to enter",
+  y_limits_latency_enter
+)
+plot_latency_eat_boxplot <- plot_delta_variable_as_boxplot(
+  plot_data,
+  "Latency_to_eat_delta",
+  "Latency to eat",
+  y_limits_latency_eat
+)
+plot_zoi_duration_boxplot <- plot_delta_variable_as_boxplot(
+  plot_data,
+  "ZOI_duration_delta",
+  "Inverted ZOI duration",
+  y_limits_zoi_duration
+)
+
+# Combine the boxplots side by side
+combined_box_plots <- (plot_latency_enter_boxplot | plot_latency_eat_boxplot | plot_zoi_duration_boxplot) +
+  plot_layout(guides = 'collect') +
+  plot_annotation(tag_levels = 'A') &
   theme(plot.tag.position = "bottom") &
-  labs(y = expression(atop("Neophobic Response", paste(plain("Less Neophobic") * phantom("   ") * plain("More Neophobic")))))
+  labs(y = expression(atop("Neophobic response",
+                           paste(plain("Less neophobic") * phantom("   ") * plain("More neophobic")))))
 
-
-
-
-
-
-# Print the final combined plot
-print(combined_plot_scaled)
-
-
-
-final_combined_plot <- (combined_plot_1 / combined_plot_scaled) +  # Use "/" for vertical stacking, "|" for horizontal
+# Combine the line plots on top and the boxplots on the bottom
+final_combined_plot <- (combined_line_plots / combined_box_plots) +
   plot_layout(ncol = 1, heights = c(1, 1))
 
-final_combined_plot
+# Display the final combined plot
+print(final_combined_plot)
