@@ -3,6 +3,7 @@ library(ggplot2)
 library(dplyr)
 library(ggsignif)
 library(patchwork)
+library(ggside)
 
 script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 # Set the working directory to the script's directory
@@ -150,26 +151,30 @@ plot_delta_variable_as_line <- function(data, var, title) {
 plot_latency_enter_line <- plot_delta_variable_as_line(
   plot_data,
   "Latency_to_enter_delta",
-  "Latency to enter"
-)
+  ""
+) + labs(x = "Latency to enter") # Remove title, keep consistent X-axis label
+
 plot_latency_eat_line <- plot_delta_variable_as_line(
   plot_data,
   "Latency_to_eat_delta",
-  "Latency to eat"
-)
+  ""
+) + labs(x = "Latency to eat") # Remove title, keep consistent X-axis label
+
 plot_zoi_duration_line <- plot_delta_variable_as_line(
   plot_data,
   "ZOI_duration_delta",
-  "Inverted ZOI duration"
-)
+  ""
+) + labs(x = "Inverted ZOI duration")
 
 # Combine the individual line plots side by side
 combined_line_plots <- (plot_latency_enter_line | plot_latency_eat_line | plot_zoi_duration_line) +
   plot_layout(guides = 'collect') +
-  plot_annotation(tag_levels = 'A') &
-  theme(plot.tag.position = "bottom") &
+  plot_annotation(tag_levels = 'A') & # Add tags A, B, C
+  theme(plot.tag.position = "topleft") & # Position tags at the top left
   labs(y = expression(atop("Neophobic response",
                            paste(plain("Less neophobic") * phantom("   ") * plain("More neophobic")))))
+
+
 
 # Function to create boxplots in black and white with manually specified y-axis limits
 plot_delta_variable_as_boxplot <- function(data, var, title, y_limits) {
@@ -226,3 +231,6 @@ final_combined_plot <- (combined_line_plots / combined_box_plots) +
 
 # Display the final combined plot
 print(final_combined_plot)
+
+
+
