@@ -2,21 +2,42 @@
 
 ## Project Overview
 
-This repository contains all data and code to reproduce the results from XXX study.
+This repository contains all data and code to reproduce the results from the study on neophobia in juvenile Herring Gulls, investigating the role of social context on behaviour and learning.
+
+---
 
 ## Repository Structure
 
-- **raw_data/**: Contains raw data files collected during the experiments.
-- **processed_data/**: Contains processed data that has been cleaned and prepared for analysis.
-- **renv/**: The directory containing the renv environment, ensuring reproducibility of the R environment used for analysis.
+### Data
+- **raw_data/**: Contains raw data files collected during the experiments. All raw data files have logically named columns and should be easy to interpret. Included files:
+  - `2024_chick_data.xlsx`: Primary dataset of individual-level behavioural observations.
+  - `BORIS_IRR_SB.csv`: Behavioural coding data from one observer for inter-rater reliability.
+  - `BORIS_RA.csv`: Behavioural coding data from a second observer.
+  - `BORIS_SK.csv`: Behavioural coding data from a third observer.
+  - `metadata.xlsx`: Metadata for the raw data files.
+
+- **processed_data/**: Contains processed data that has been cleaned and prepared for analysis, including:
+  - `neophobia_data.csv`: Fully processed dataset used for statistical analysis.
+  - `neophobia_data_IRR.csv`: Data prepared for inter-rater reliability analysis.
+  - `videos_for_doublecoding.csv`: Information on the videos selected for double coding.
+
+### Scripts
+- **IRR.R**: Script for calculating inter-rater reliability (IRR) using Cohen’s Kappa for the coded behavioural data.
+- **preprocessing.R**: Script for cleaning and preprocessing the raw data before analysis.
+- **analysis.R**: Main R script containing statistical models and data analysis pipeline.
+- **analysis.Rmd**: R Markdown file with detailed steps for data analysis and result interpretation.
+- **analysis.html**: Rendered HTML report of the `analysis.Rmd` file.
+- **plotting.R**: Script for generating plots and visualizations, including figures used in the manuscript.
+
+### Environment and Configuration
+- **renv/**: Directory containing the `renv` environment for package management, ensuring reproducibility of the R environment.
+- **renv.lock**: Lockfile for the `renv` environment, ensuring the same package versions are used.
+- **Neophobia_2024.Rproj**: RStudio project file for this study.
 - **.Rprofile**: Configuration file for the R environment.
 - **.gitignore**: Specifies files and directories to be ignored by git.
-- **IRR.R**: Script for calculating inter-rater reliability (IRR) using Cohen’s Kappa for the coded behavioral data.
-- **Neophobia_2024.Rproj**: RStudio project file for the study.
-- **analysis.Rmd**: Main analysis script where statistical models and data analysis are performed.
-- **plotting.R**: Script for generating plots and visualizations of the data.
-- **preprocessing.R**: Script for preprocessing the raw data before analysis.
-- **renv.lock**: Lockfile for the renv environment, ensuring the same package versions are used.
+- **.gitattributes**: Defines attributes for specific files in the repository.
+
+---
 
 ## Installation
 
