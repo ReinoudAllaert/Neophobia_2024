@@ -1,49 +1,39 @@
-# Neophobia in Juvenile Herring Gulls
+# OSF Project: Neophobia Across Social Contexts in Juvenile Herring Gulls
 
-## Project Overview
+This repository contains all the files related to the study on neophobia across social contexts in juvenile Herring Gulls. Below is a description of each file, along with guidance for additional materials.
 
-This repository contains all data and code to reproduce the results from XXX study.
+## File Descriptions
 
-## Repository Structure
+1. **PCIRR-Stage1-Snapshot.pdf**  
+   Snapshot of the Stage 1 Registered Report (RR) as submitted to PCI Registered Reports.  
+   
+2. **Stage1RR.pdf**  
+   The initial submission of the Stage 1 Registered Report.  
+  
+3. **Stage1RR_revised.pdf**  
+   The revised version of the Stage 1 RR, updated based on reviewer feedback.  
+   
+4. **Stage1RR_revision2.pdf**  
+   The second revision of the Stage 1 RR after further reviewer feedback.  
+  
+5. **Stage2RR.pdf**  
+   The final Stage 2 Registered Report, reflecting the completed study and analyses.  
+   
+6. **Stage_2_track_changes.pdf**  
+   A version of the Stage 2 RR with changes highlighted.  
+  
+---
 
-- **raw_data/**: Contains raw data files collected during the experiments.
-- **processed_data/**: Contains processed data that has been cleaned and prepared for analysis.
-- **renv/**: The directory containing the renv environment, ensuring reproducibility of the R environment used for analysis.
-- **.Rprofile**: Configuration file for the R environment.
-- **.gitignore**: Specifies files and directories to be ignored by git.
-- **IRR.R**: Script for calculating inter-rater reliability (IRR) using Cohen’s Kappa for the coded behavioral data.
-- **Neophobia_2024.Rproj**: RStudio project file for the study.
-- **analysis.Rmd**: Main analysis script where statistical models and data analysis are performed.
-- **plotting.R**: Script for generating plots and visualizations of the data.
-- **preprocessing.R**: Script for preprocessing the raw data before analysis.
-- **renv.lock**: Lockfile for the renv environment, ensuring the same package versions are used.
+## Additional Information
 
-## Installation
+- **GitHub Repository**:  
+  This project is linked to a GitHub repository available at:  
+  [https://github.com/ReinoudAllaert/Neophobia_2024](https://github.com/ReinoudAllaert/Neophobia_2024).  
+  The repository contains:  
+  - Scripts and code for data analysis, all raw data to reproduce the results.  
+  - A second README file with detailed information about the analysis pipeline, including instructions for reproducing results.
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/Neophobia_2024.git
+- **How to Cite**:  
+  Please include a link to this OSF project page and follow citation guidelines provided in the manuscript when referencing this work.
 
-2. Set up the R environment using `renv`:
-    ```bash
-   renv::restore()
-
-## Usage
-
-1. **Data Preprocessing**:
-   - Run `preprocessing.R` to prepare the raw data BORIS output for analysis.
-
-2. **Inter-Rater Reliability**:
-   - Run `IRR.R` to prepare BORIS data of the external coder, calculate the inter-rater reliability of the behavioural coding.
-
-3. **Data Analysis**:
-   - Run `analysis.Rmd` to perform the statistical analyses. 
-
-4. **Plotting**:
-   - Run `plotting.R` to generate visualizations of the data, including figures used in the manuscript.
-
-## Contact
-
-For any questions or collaborations, please contact Reinoud Allaert at reinoud.allaert@ugent.be.
-
-
+---
