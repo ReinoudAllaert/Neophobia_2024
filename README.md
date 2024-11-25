@@ -14,7 +14,6 @@ This repository contains all the files related to the study on neophobia across 
 
 - **processed_data/**: Contains processed data that has been cleaned and prepared for analysis, including:
   - `neophobia_data.csv`: Fully processed dataset used for statistical analysis.
-  - `neophobia_data_IRR.csv`: Data for inter-rater reliability analysis.
   - `videos_for_doublecoding.csv`: Reproducible way of selecting videos for double coding.
 
 ### Scripts
