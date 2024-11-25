@@ -3,7 +3,7 @@ library(ggplot2)
 library(dplyr)
 library(ggsignif)
 library(patchwork)
-library(ggside)
+
 
 script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
 # Set the working directory to the script's directory
@@ -174,7 +174,7 @@ combined_line_plots <- (plot_latency_enter_line | plot_latency_eat_line | plot_z
   labs(y = expression(atop("Neophobic response",
                            paste(plain("Less neophobic") * phantom("   ") * plain("More neophobic")))))
 
-
+combined_line_plots
 
 # Function to create boxplots in black and white with manually specified y-axis limits
 plot_delta_variable_as_boxplot <- function(data, var, title, y_limits) {
@@ -224,6 +224,8 @@ combined_box_plots <- (plot_latency_enter_boxplot | plot_latency_eat_boxplot | p
   theme(plot.tag.position = "bottom") &
   labs(y = expression(atop("Neophobic response",
                            paste(plain("Less neophobic") * phantom("   ") * plain("More neophobic")))))
+
+combined_box_plots
 
 # Combine the line plots on top and the boxplots on the bottom
 final_combined_plot <- (combined_line_plots / combined_box_plots) +

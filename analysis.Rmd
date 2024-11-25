@@ -11,6 +11,9 @@ output:
 Load and install R packages:
 
 ```{r Dependencies, echo=TRUE}
+
+## Use renv::restore to restore use package versions
+
 packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'readxl', 'purrr', 'performance', 'emmeans', 'MASS', 'dplyr', 'tidyr', 'nlme', 'mvtnorm', 'lattice')
 
 # Check if each package is installed; if not, install it
@@ -20,6 +23,8 @@ for (pkg in packages) {
   }
   library(pkg, character.only = TRUE)
 }
+
+
 
 ```
 
