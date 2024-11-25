@@ -6,24 +6,23 @@ This repository contains all the files related to the study on neophobia across 
 
 ### Data
 - **raw_data/**: Contains raw data files collected during the experiments. All raw data files have logically named columns and should be easy to interpret. Included files:
-  - `2024_chick_data.xlsx`: Primary dataset of individual-level behavioural observations.
-  - `BORIS_IRR_SB.csv`: Behavioural coding data from one observer for inter-rater reliability.
-  - `BORIS_RA.csv`: Behavioural coding data from a second observer.
-  - `BORIS_SK.csv`: Behavioural coding data from a third observer.
-  - `metadata.xlsx`: Metadata for the raw data files.
+  - `2024_chick_data.xlsx`: This file contains general information about the chicks used in the study. Each row represents an individual bird.
+  - `BORIS_IRR_SB.csv`: Behavioural coding data from one of the co-authors observer for inter-rater reliability, output from BORIS.
+  - `BORIS_RA.csv`: Behavioural coding data from Reinoud Allaert, output from BORIS.
+  - `BORIS_SK.csv`: Behavioural coding data from Sophia Knoch,, output from BORIS.
+
 
 - **processed_data/**: Contains processed data that has been cleaned and prepared for analysis, including:
   - `neophobia_data.csv`: Fully processed dataset used for statistical analysis.
-  - `neophobia_data_IRR.csv`: Data prepared for inter-rater reliability analysis.
-  - `videos_for_doublecoding.csv`: Information on the videos selected for double coding.
+  - `neophobia_data_IRR.csv`: Data for inter-rater reliability analysis.
+  - `videos_for_doublecoding.csv`: Reproducible way of selecting videos for double coding.
 
 ### Scripts
-- **IRR.R**: Script for calculating inter-rater reliability (IRR) using Cohen’s Kappa for the coded behavioural data.
 - **preprocessing.R**: Script for cleaning and preprocessing the raw data before analysis.
-- **analysis.R**: Main R script containing statistical models and data analysis pipeline.
+- **analysis.R**: Main R script containing statistical models and data analysis pipeline (copy of the .Rmd)
 - **analysis.Rmd**: R Markdown file with detailed steps for data analysis and result interpretation.
 - **analysis.html**: Rendered HTML report of the `analysis.Rmd` file.
-- **plotting.R**: Script for generating plots and visualizations, including figures used in the manuscript.
+- **plotting.R**: Script for generating plots and visualisations, including figures used in the manuscript.
 
 ### Environment and Configuration
 - **renv/**: Directory containing the `renv` environment for package management, ensuring reproducibility of the R environment.
