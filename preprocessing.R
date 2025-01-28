@@ -74,7 +74,7 @@ data <- data %>%
     trial_type = ifelse(grepl("control", Observation_id), "control", "novel"),
     experimenter = sapply(parts, function(x) x[length(x)])
   ) %>%
-  select(-parts)  # Remove the temporary 'parts' column
+  dplyr::select(-parts)  # Remove the temporary 'parts' column
 
 
 # filter rows where Behavior is "Trial start"
@@ -102,7 +102,7 @@ update_trial_times <- function(df) {
       Start__s_ = ifelse(Behavior == "Trial end" & !is.na(adjusted_time), adjusted_time + 600, Start__s_)
     ) %>%
     ungroup() %>%
-    select(-adjusted_time) # Remove the temporary column
+    dplyr::select(-adjusted_time) # Remove the temporary column
 }
 
 # Apply the function to individual trials
@@ -173,7 +173,7 @@ group_data$bird_ID <- gsub("black", "bla", group_data$bird_ID)
 group_data$bird_ID <- gsub("blue", "blu", group_data$bird_ID)
 
 group_data <- group_data %>%
-  left_join(select(chick_data, chick_id, bird_ID), by = "bird_ID")
+  left_join(dplyr::select(chick_data, chick_id, bird_ID), by = "bird_ID")
 
 ## Check whether we have 4 + 4x trials per bird
 trial_start_data <- subset(group_data, Behavior == "Trial start")
@@ -196,12 +196,12 @@ individual_data <- individual_data %>% mutate(chick_id = ID)
 common_columns <- intersect(names(individual_data), names(group_data))
 
 # select only common columns
-individual_data_common <- individual_data %>% select(all_of(common_columns))
-group_data_common <- group_data %>% select(all_of(common_columns))
+individual_data_common <- individual_data %>% dplyr::select(all_of(common_columns))
+group_data_common <- group_data %>% dplyr::select(all_of(common_columns))
 
 # combine the data frames
 combined_data <- rbind(individual_data_common, group_data_common) %>% 
-  select(-Test_arena_entry_time) %>%
+  dplyr::select(-Test_arena_entry_time) %>%
   mutate(trial_category = ifelse(Observation_id %in% unique(group_data$Observation_id), "group", "individual"))
 
 # remove ZOI after trial end
@@ -221,7 +221,7 @@ adjust_zoi_events <- function(df) {
     # Remove events starting after trial end
     filter(!(Behavior == "Zone of Interest" & Start__s_ >= trial_end_time)) %>%
     ungroup() %>%
-    select(-trial_end_time) # Remove the temporary column
+    dplyr::select(-trial_end_time) # Remove the temporary column
 }
 
 # Apply the function to the combined dataset
@@ -257,7 +257,7 @@ entry
 results <- list()
 # Get unique combinations of chick_id and trial_day
 unique_combinations <- combined_data %>%
-  select(chick_id, trial_day) %>%
+  dplyr::select(chick_id, trial_day) %>%
   distinct()
 
 # Iterate over each combination
@@ -275,7 +275,7 @@ for (i in seq_len(nrow(unique_combinations))) {
   # Extract ZOI intervals
   zoi_intervals <- subset_data %>%
     filter(Behavior == "Zone of Interest") %>%
-    select(Start__s_, Stop__s_)
+    dplyr::select(Start__s_, Stop__s_)
   
   # Check if eating times fall within any ZOI intervals
   eating_in_zoi <- sapply(eating_times, function(eating_time) {
@@ -314,7 +314,7 @@ metrics_data <- combined_data %>%
     latency_to_eat = ifelse(is.na(eating_time), 600, eating_time - entry_time),
     zoi_duration = replace_na(zoi_duration, 0)
   ) %>%
-  select(chick_id, trial_day, enclosure, trial_type, trial_category, latency_to_enter, latency_to_eat, zoi_duration)
+  dplyr::select(chick_id, trial_day, enclosure, trial_type, trial_category, latency_to_enter, latency_to_eat, zoi_duration)
 
 
 # add object
@@ -343,16 +343,16 @@ data_long <- schedule %>%
 # merge the object type data with the metrics data
 metrics_data <- metrics_data %>%
   left_join(data_long, by = c("enclosure", "trial_day")) %>%
-  select(chick_id, trial_day, enclosure, trial_type, trial_category, latency_to_enter, latency_to_eat, zoi_duration, Object_Type)
+  dplyr::select(chick_id, trial_day, enclosure, trial_type, trial_category, latency_to_enter, latency_to_eat, zoi_duration, Object_Type)
 
 # add the groupID and nestID
 metrics_data <- metrics_data %>%
-  left_join(select(chick_data, chick_id, rr_grp, egg_id), by = "chick_id") %>%
+  left_join(dplyr::select(chick_data, chick_id, rr_grp, egg_id), by = "chick_id") %>%
   mutate(
     GroupID = ifelse(trial_category == "individual", NA, rr_grp),
     NestID = substr(egg_id, 1, nchar(egg_id) - 1)
   ) %>%
-  select(-rr_grp, -egg_id)
+  dplyr::select(-rr_grp)
 
 # rename columns to be consistent with RR
 metrics_data <- metrics_data %>%

@@ -1,0 +1,1010 @@
+---
+title: "Neophobia analysis"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+## Setup
+
+Load and install R packages:
+
+```{r Dependencies, echo=TRUE}
+
+## Use renv::restore to restore use package versions
+
+packages <- c('lmerTest', 'lme4', 'ggplot2', 'tidyverse', 'readxl', 'purrr', 'performance', 'emmeans', 'MASS', 'tidyr', 'nlme', 'mvtnorm', 'lattice','dplyr')
+
+# Check if each package is installed; if not, install it
+for (pkg in packages) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg)
+  }
+  library(pkg, character.only = TRUE)
+}
+
+
+
+```
+
+## Data Loading
+
+Grab `neophobia_data.csv` from `processed_data` directory:
+
+```{r Load data}
+script_dir <- dirname(rstudioapi::getActiveDocumentContext()$path)
+# Set the working directory to the script's directory
+setwd(script_dir)
+data <- read.csv("processed_data/neophobia_data.csv", row.names = 1)
+data_sex <- read_excel("raw_data/2024_sex_data.xlsx")
+
+
+# add sex
+data_sex$egg_id <- gsub("[[:space:]]+", " ", data_sex$egg_id)
+data_sex$egg_id <- sub("^(.*[ABC]).*", "\\1", data_sex$egg_id)
+
+data <- data %>%
+  left_join(data_sex %>% dplyr::select(egg_id, sex, sex_contrast), by = "egg_id")
+# check if all there
+missing_ids_in_sex <- setdiff(data$egg_id, data_sex$egg_id)
+missing_idsx <- setdiff(data_sex$egg_id, data$egg_id)
+
+# Print the missing IDs
+missing_ids_in_sex
+missing_idsx
+data$sex_contrast[is.na(data$sex_contrast)] <- 0
+
+```
+
+## Quick Data Inspection
+
+### Filter out LBBG
+
+Summary statistics of the data:
+
+```{r data summary, fig.width=10, fig.height=10, dpi=300}
+# Quick look at structure
+str(data)
+summary(data)
+
+# 13 birds were ID'd to be LBBG instead of HG, in the RR we stated  we would remove those from the analysis:
+
+LBBG <- c("GY_RY", "BG_RR", "GR_GR", "GG_BR",
+          "BG_BY", "GY_PP", "PR_BP", "PY_BY",
+          "BP_BY", "BB_RR", "GG_BG", "BB_GY",
+          "PR_RY")
+
+
+#data <- data %>% filter(!Bird_ID %in% LBBG)
+
+# There are quite a bit of birds that never ate, let's explore those:
+data_not_eat <- data %>% filter(Latency_to_Eat == 600)
+
+# 13/29 not eating trials are from birds that did not eat twice or more 
+sort(table(data_not_eat$Bird_ID), decreasing = TRUE)
+
+data_not_eat <- data_not_eat %>%
+  group_by(Object, Context) %>%
+  summarise(Count = n())
+data_not_eat$obj_cont <- paste0(data_not_eat$Object, "_", data_not_eat$Context)
+
+# Almost all of those ocurrences are individual x novel
+data_not_eat
+
+# Given that these are actually the most interesting birds, we should keep them in the analysis. There are only 106 individual x novel trials in total. Excluding 29 of them  would mean losing 1/3 of the data.
+
+
+```
+
+## Data Preprocessing
+
+### Missing Group ID Values
+
+The `GroupID` values are currently coded as `NA` during individual trials. Assign the most frequent group for each bird:
+
+```{r Add grp values}
+most_frequent_group <- function(group_ids) {
+  group_ids <- group_ids[!is.na(group_ids)]
+  if (length(group_ids) == 0) return(NA)
+  names(sort(table(group_ids), decreasing = TRUE))[1]
+}
+
+most_frequent_group_per_bird <- data %>%
+  group_by(Bird_ID) %>%
+  summarize(most_frequent_group = most_frequent_group(GroupID)) %>%
+  ungroup()
+
+data <- data %>%
+  left_join(most_frequent_group_per_bird, by = "Bird_ID") %>%
+  mutate(GroupID = ifelse(is.na(GroupID), most_frequent_group, GroupID)) %>%
+  dplyr::select(-most_frequent_group)
+
+```
+
+### Adjusting Trial Numbers, so the baseline is the first trial rather than 0.
+
+Adjust the `Trial` variable by subtracting 1:
+
+```{r Set trial nbr}
+data$Trial <- data$Trial - 1
+
+```
+
+## Statistical Modeling
+
+Given the non-normality of the data we tried to fit 1) DV as is, 2) log(DV), 3) boxcox(DV), going through these steps where necessary.
+
+### 1) Latency to Enter
+
+The full model as described in the RR, includes `Object_contrast`, `Context_contrast`, and `Trial`, and a complex random effect structure:
+
+```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
+enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+                (1 | NestID) + 
+                (-1 + group_dummy | GroupID) + 
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+
+
+summary(enter_model)
+check_model(enter_model)
+
+```
+
+The random effect structure seems to be too complex for the amount of data. However, the variance for the `(Intercept)` under `NestID` is `0` and the variance for `group_dummy` under `GroupID` is `0`. This suggests that both nest as differences between groups contribute minimally to the variance in the outcome model. Let's drop both effects.
+
+```{r Enter model 2, fig.width=10, fig.height=10, dpi=300}
+enter_model2 <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model2)
+check_model(enter_model2)
+```
+
+Seems like the interaction between object and context is non-significant, let's drop it. Given the non-normal distribution, let's logtransform the data as well:
+
+```{r Enter model 3, fig.width=10, fig.height=10, dpi=300}
+enter_model3 <- lmer(log(Latency_to_enter) ~ Object_contrast + Context_contrast + Trial + sex_contrast +
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(enter_model3)
+check_model(enter_model3)
+
+
+
+```
+
+There are still issues with the data distribution, let's boxcox_transform:
+
+```{r Enter model 4, fig.width=10, fig.height=10, dpi=300}
+
+boxcox_transform <- boxcox(lm(Latency_to_enter ~ Object_contrast + Context_contrast + Trial + sex_contrast, data = data))
+best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
+best_lambda
+data$Latency_to_enter_trans <- (data$Latency_to_enter^best_lambda - 1) / best_lambda
+
+enter_model4_boxcox <- lmer(Latency_to_enter_trans ~ Object_contrast + 
+                              Context_contrast + Trial  + sex_contrast +
+                            (-1 + ind_dummy + group_dummy | Bird_ID), 
+                            data = data)
+summary(enter_model4_boxcox)
+check_model(enter_model4_boxcox)
+```
+
+Comparing the different models, the boxcox transfromed comes out as best. Now let's backtransform the values, for interpretation:
+
+```{r Backtransform, fig.width=10, fig.height=10, dpi=300}
+## First the fixed effects
+bctran_enter <- make.tran("boxcox", best_lambda) 
+
+emms_intercept <- emmeans(
+  enter_model4_boxcox,
+  specs = ~ 1,  # Compute overall mean, equivalent to intercept back-transformation
+  at = list(Context_contrast = 0, Object_contrast = 0, Trial = 0),  # Set to baseline values
+  type = "response",
+  tran = bctran_enter  # Back-transform using Box-Cox transformation
+)
+
+# Print back-transformed intercept value
+print(emms_intercept)
+
+
+# Compute marginal means for Context_contrast
+emms_context <- emmeans(
+  enter_model4_boxcox,
+  specs = "Context_contrast",  # Marginal means for Context_contrast
+  type = "response",
+  tran = bctran_enter  # Back-transform using Box-Cox transformation
+)
+print(emms_context)
+
+# Compute marginal means for Object_contrast
+emms_object <- emmeans(
+  enter_model4_boxcox,
+  specs = "Object_contrast",  # Marginal means for Object_contrast
+  type = "response",
+  tran = bctran_enter  # Back-transform using Box-Cox transformation
+)
+print(emms_object)
+
+
+emms_object <- emmeans(
+  enter_model4_boxcox,
+  specs = "sex_contrast",  # Marginal means for sex
+  type = "response",
+  tran = bctran_enter,  # Back-transform using Box-Cox transformation
+  at = list(sex_contrast = c(-0.5, 0.5))  # Specify levels of sex_contrast
+)
+print(emms_object)
+
+# Compute marginal means for Trial
+emms_trial_baseline <- emmeans(
+  enter_model4_boxcox,
+  specs = ~ Trial,  # Get marginal means for each trial
+  at = list(Trial = 0:7),  # trial range (0 to 7)
+  type = "response", 
+  tran = bctran_enter  
+) 
+print(emms_trial_baseline) # Clear change in latency over time
+
+# Compare each trial to Trial 0 (the baseline) 
+contrast(emms_trial_baseline, "trt.vs.ctrl", ref = 1) 
+
+#### Now look at the variance:
+
+# variances from the model summary 
+
+random_effects_variances <- as.data.frame(VarCorr(enter_model4_boxcox))
+
+# Set seed for reproducibility
+set.seed(463)
+
+# Number of birds to simulate
+n_birds <- 1000
+
+# Mean vector for the random effects (mean is 0 for both ind and group random effects)
+means <- rep(0, 2)
+
+# Construct covariance matrix for the random effects (ind and group)
+# random_effects_variances contains the variances and covariances from the model
+covar <- matrix(c(random_effects_variances[1, 4],  # Variance for "ind"
+                  random_effects_variances[3, 4],  # Covariance between "ind" and "group"
+                  random_effects_variances[3, 4],  # Covariance between "ind" and "group" 
+                  random_effects_variances[2, 4]), # Variance for "group"
+                 byrow = TRUE,
+                 ncol = 2,
+                 dimnames = list(c("ind", "group"), c("ind", "group")))
+
+# Simulate random effects for 1000 birds, considering the covariance structure
+sim_ranefs <- data.frame(rmvnorm(n_birds, mean = means, sigma = covar))
+
+# Rename the columns for clarity
+names(sim_ranefs) <- c("ind", "group")
+
+# Check the covariance of the simulated random effects
+cov(sim_ranefs)
+
+# Create new data for predicting fixed effects
+new_data <- data.frame(
+  Trial = 0,  # Keep Trial fixed at 0
+  Object = rep(c("control", "novel"), each = 2),  # Two levels: control and novel objects
+  Object_contrast = rep(c(-0.5, 0.5), each = 2),  # Contrast coding for Object
+  Context = rep(c("ind", "group"), times = 2),    # Two contexts: individual and group
+  Context_contrast = rep(c(-0.5, 0.5), times = 2), # Contrast coding for Context
+  sex_contrast = rep(c(-0.5, 0.5), each = 2),
+  ind_dummy = rep(c(1, 0), times = 2),  # Dummy coding for individual context
+  group_dummy = rep(c(0, 1), times = 2), # Dummy coding for group context
+  Bird_ID = "new"  # Arbitrary bird ID to allow prediction
+)
+
+# Predict fixed effects using the model (without considering random effects) for the new data
+new_data$pred <- predict(enter_model4_boxcox, newdata = new_data, allow.new.levels = TRUE)
+
+# Add the fixed effect predictions to the simulated random effects
+# for each combination of object and context
+
+# Individual birds, novel object condition
+sim_ranefs$ind_novel <- sim_ranefs$ind + 
+  new_data |> filter(Object == "novel", Context == "ind") |> pull(pred)
+
+# Individual birds, control object condition
+sim_ranefs$ind_control <- sim_ranefs$ind + 
+  new_data |> filter(Object == "control", Context == "ind") |> pull(pred)
+
+# Group birds, novel object condition
+sim_ranefs$group_novel <- sim_ranefs$ind + 
+  new_data |> filter(Object == "novel", Context == "group") |> pull(pred)
+
+# Group birds, control object condition
+sim_ranefs$group_control <- sim_ranefs$ind + 
+  new_data |> filter(Object == "control", Context == "group") |> pull(pred)
+
+# Add an ID column to simulate the bird IDs
+sim_ranefs$id <- seq_len(n_birds)
+
+# Reshape the data into long format for easier plotting and analysis
+plot_data <- sim_ranefs |> pivot_longer(
+  cols = c("ind_novel", "ind_control", "group_novel", "group_control"),  # Columns to pivot
+  names_sep = "_", 
+  names_to = c("cont", "obj"),  # "cont" refers to context, "obj" refers to object type
+  values_to = "pred"  # Pivoted values go into the "pred" column
+)
+
+# Define the function for back-transforming Box-Cox values
+back_transform <- function(simulated_values, lambda = best_lambda) {
+  if (lambda != 0) {
+    return((simulated_values * lambda + 1)^(1 / lambda))  # Box-Cox back-transformation
+  } else {
+    return(exp(simulated_values))  # If lambda is 0, apply an exponential transformation
+  }
+}
+
+# Apply back-transformation to the predictions
+plot_data$pred_back <- back_transform(plot_data$pred)
+
+# Replace any NA values in back-transformed predictions with the maximum latency
+# This step ensures that all birds have valid back-transformed latency values
+plot_data$pred_back[is.na(plot_data$pred_back)] <- max(plot_data$pred_back, na.rm = TRUE)
+
+
+
+# Plot the distributions of the Box-Cox transformed random effects
+densityplot(~ pred | obj, groups = cont, data = plot_data, auto.key = TRUE,
+            main = "Box-Cox Transformed Random Effects Distributions", plot.points = FALSE)
+
+# Plot the distributions of the back-transformed random effects
+densityplot(~ pred_back | obj, groups = cont, data = plot_data, auto.key = TRUE,
+            main = "Back-Transformed Random Effects Distributions", 
+            xlim = c(-1, 10), plot.points = FALSE)
+
+# Reshape the data back to wide format to calculate covariance and correlation
+cor_data <- plot_data |> pivot_wider(
+  id_cols = id, 
+  names_from = c(cont, obj), 
+  values_from = pred_back
+)
+
+# Calculate covariance and correlation matrices for novel trials
+cov(cor_data[, c(2, 4)])  # Covariance between individual and group in novel condition
+cor(cor_data[, c(2, 4)])  # Correlation between individual and group in novel condition
+sd(cor_data$ind_novel)    # Standard deviation in the individual condition (novel)
+sd(cor_data$group_novel)  # Standard deviation in the group condition (novel)
+
+# Calculate covariance and correlation matrices for control trials
+cov(cor_data[, c(3, 5)])  # Covariance between individual and group in control condition
+cor(cor_data[, c(3, 5)])  # Correlation between individual and group in control condition
+sd(cor_data$ind_control)  # Standard deviation in the individual condition (control)
+sd(cor_data$group_control) # Standard deviation in the group condition (control)
+
+
+# Now likelihood ratio test to check whether this sign is different
+# Fit model with and without both random effects
+
+# Model 1: Full model with separate variances 
+enter_model4_boxcox <- lmer(
+  Latency_to_enter_trans ~ Object_contrast + Context_contrast + Trial + sex_contrast +
+  (-1 + ind_dummy + group_dummy | Bird_ID),
+  data = data
+)
+
+# Model 2: Reduced model with a single random effect 
+enter_model_reduced <- lmer(
+  Latency_to_enter_trans ~ Object_contrast + Context_contrast + Trial + sex_contrast +
+  (1 | Bird_ID),  
+  data = data
+)
+
+# compare the models using a likelihood ratio test (LRT)
+anova(enter_model4_boxcox, enter_model_reduced)
+
+```
+
+
+### 2) Latency to Eat Model
+
+A similar model is built for `Latency_to_Eat`, again incorporating interaction terms and random effects:
+
+```{r Eat model 1, fig.width=10, fig.height=10, dpi=300}
+# Given that the distribution of DV is similar to that of the enter model, we log transformed .
+eat_model <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+                    (1 | NestID) + 
+                   (- 1 + group_dummy | GroupID) + 
+                   (- 1 + ind_dummy + group_dummy | Bird_ID),  
+                 data = data)
+summary(eat_model)
+check_model(eat_model)
+```
+
+Similarly, the variance for the `(Intercept)` under `NestID` is `0` and the variance for `group_dummy` under `GroupID` is `0`. Let's drop those:
+
+```{r Eat model 2, fig.width=10, fig.height=10, dpi=300}
+
+eat_model2 <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+                   (- 1 + ind_dummy + group_dummy | Bird_ID),  
+                 data = data)
+summary(eat_model2)
+check_model(eat_model2)
+
+```
+
+There are still some issues with the normality. Let's try the same boxcox tranformation:
+
+```{r Eat model 3, fig.width=10, fig.height=10, dpi=300}
+
+boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + sex_contrast, data = data))
+best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
+best_lambda
+data$Latency_to_eat_trans <- (data$Latency_to_Eat^best_lambda - 1) / best_lambda
+
+eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast * 
+                              Context_contrast + Trial + sex_contrast +
+                            (-1 + ind_dummy + group_dummy | Bird_ID), 
+                            data = data)
+
+summary(eat_model4_boxcox)
+check_model(eat_model4_boxcox)
+
+# Given the correlation of 1 and the fact that we still get a singular fit, try to reduce the model
+eat_model_reduced <- lmer(Latency_to_eat_trans ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+                              (1 | Bird_ID), data = data)
+summary(eat_model_reduced)
+
+# Compare the models using a likelihood ratio test (LRT)
+anova(eat_model_reduced, eat_model4_boxcox)
+
+# Indeed the full model is not better, so lets continue with the reduved model
+
+# posthoc interaction
+posthoc_interaction <- emmeans(eat_model_reduced, pairwise ~ Object_contrast * Context_contrast)
+
+# Display the results
+summary(posthoc_interaction)
+
+```
+
+Now backtransfomr:
+
+```{r Backtransform2, fig.width=10, fig.height=10, dpi=300}
+# Ficed effects$$
+emms_intercept <- emmeans(
+  eat_model_reduced,
+  specs = ~ 1,  # Compute overall mean, equivalent to intercept back-transformation
+  at = list(Context_contrast = 0, Object_contrast = 0, Trial = 0),  # Set to baseline values
+  type = "response",
+  tran = bctran_enter  # Back-transform using Box-Cox transformation
+)
+
+emms_object <- emmeans(
+  eat_model_reduced,
+  specs = "sex_contrast",  # Marginal means for sex
+  type = "response",
+  tran = bctran_enter,  # Back-transform using Box-Cox transformation
+  at = list(sex_contrast = c(-0.5, 0.5))  # Specify levels of sex_contrast
+)
+print(emms_object)
+
+# Print back-transformed intercept value
+print(emms_intercept)
+
+# Compute marginal means for the interaction between Object_contrast and Context_contrast, the only interesting fixed effect to look at for this model
+emms_interaction_eat <- emmeans(
+  eat_model_reduced,
+  specs = ~ Object_contrast * Context_contrast,  # Interaction between object and context
+  type = "response",                             # Back-transform to original scale
+  tran = bctran_enter                            # Apply Box-Cox back-transformation
+)
+print(emms_interaction_eat)
+
+# not possible to look at random effects
+
+```
+
+
+### 3) Time spent in the zone of interest
+
+```{r ZOI model 2, fig.width=10, fig.height=10, dpi=300}
+zoi_model2 <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+                (-1 +  ind_dummy + group_dummy | Bird_ID), 
+              data = data)
+
+summary(zoi_model2)
+check_model(zoi_model2)
+```
+
+try logtransformation, seems to work
+
+```{r ZOI model log, fig.width=10, fig.height=10, dpi=300}
+## 
+# Log transformation to better handle zeros
+data$Log_Zoi_duration <- log(data$Zoi_duration + 1)
+
+# Fit a linear mixed model on the transformed data
+zoi_model_log <- lmer(
+  Log_Zoi_duration ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+    (-1 + ind_dummy + group_dummy | Bird_ID), 
+  data = data
+)
+
+# Summarize the model
+summary(zoi_model_log)
+check_model(zoi_model_log)
+
+# posthoc interaction
+posthoc_interaction <- emmeans(zoi_model_log, pairwise ~ Object_contrast * Context_contrast)
+
+# Display the results
+summary(posthoc_interaction)
+```
+
+Comparing the different models, the log comes out as best
+
+```{r backtrnafrom, fig.width=10, fig.height=10, dpi=300}
+# Function for back-transforming the log-transformed values to seconds
+# Back-transform the fixed effects
+back_transform_log <- function(predicted_values) {
+  # Apply exp() to reverse the log-transformation
+  return(exp(predicted_values))
+}
+
+# Compute marginal means for the interaction between Object_contrast and Context_contrast
+emms_interaction_zoi <- emmeans(
+  zoi_model_log,  # The log-transformed model
+  specs = ~ Object_contrast * Context_contrast,  # Interaction between object and context
+  type = "response",
+  tran = log # Return values on the original (back-transformed) scale
+)
+
+
+
+# Apply the back-transform function to the emmeans results
+predicted_zoi_interaction <- summary(emms_interaction_zoi)
+predicted_zoi_interaction$backtransformed_response <- back_transform_log(predicted_zoi_interaction$emmean)
+
+# Print the back-transformed marginal means
+print(predicted_zoi_interaction)
+
+emms_trial_baseline_zoi <- emmeans(
+  zoi_model_log,         # The log-transformed ZOI model
+  specs = ~ Trial,        # Get marginal means for each trial
+  at = list(Trial = 0:7), # Specify the range of trials (0 to 7)
+  type = "response",      # Return back-transformed (response scale) values
+  tran = "log"            # Back-transform the log-transformed ZOI durations
+)
+
+emms_object <- emmeans(
+  enter_model4_boxcox,
+  specs = "sex_contrast",  # Marginal means for sex
+  type = "response",
+  tran = log  #
+)
+print(emms_object)
+
+# Print the back-transformed marginal means for trials
+print(emms_trial_baseline_zoi)
+# Compare each trial to Trial 0 (the baseline)
+contrast(emms_trial_baseline_zoi, "trt.vs.ctrl", ref = 1)
+
+# Random effects
+random_effects_variances <- as.data.frame(VarCorr(zoi_model_log))
+
+# Set seed for reproducibility
+set.seed(463)
+
+# Number of birds to simulate
+n_birds <- 1000
+
+# Mean vector for the random effects (mean is 0 for both ind and group random effects)
+means <- rep(0, 2)
+
+# Construct covariance matrix for the random effects (ind and group)
+# random_effects_variances contains the variances and covariances from the model
+covar <- matrix(c(random_effects_variances[1, 4],  # Variance for "ind"
+                  random_effects_variances[3, 4],  # Covariance between "ind" and "group"
+                  random_effects_variances[3, 4],  # Covariance between "ind" and "group" 
+                  random_effects_variances[2, 4]), # Variance for "group"
+                 byrow = TRUE,
+                 ncol = 2,
+                 dimnames = list(c("ind", "group"), c("ind", "group")))
+
+# Simulate random effects for 1000 birds, considering the covariance structure
+sim_ranefs <- data.frame(rmvnorm(n_birds, mean = means, sigma = covar))
+
+# Rename the columns for clarity
+names(sim_ranefs) <- c("ind", "group")
+
+# Check the covariance of the simulated random effects
+cov(sim_ranefs)
+
+# Create new data for predicting fixed effects
+new_data <- data.frame(
+  Trial = 0,  # Keep Trial fixed at 0
+  Object = rep(c("control", "novel"), each = 2),  # Two levels: control and novel objects
+  Object_contrast = rep(c(-0.5, 0.5), each = 2),  # Contrast coding for Object
+  Context = rep(c("ind", "group"), times = 2),    # Two contexts: individual and group
+  Context_contrast = rep(c(-0.5, 0.5), times = 2), # Contrast coding for Context
+  ind_dummy = rep(c(1, 0), times = 2),  # Dummy coding for individual context
+  group_dummy = rep(c(0, 1), times = 2),  # Dummy coding for group context
+  sex_contrast = rep(c(-0.5, 0.5), each = 2),
+  Bird_ID = "new"  # Arbitrary bird ID to allow prediction
+)
+
+# Predict fixed effects using the model (without considering random effects) for the new data
+new_data$pred <- predict(zoi_model_log, newdata = new_data, allow.new.levels = TRUE)
+
+# Add the fixed effect predictions to the simulated random effects
+# for each combination of object and context
+
+# Individual birds, novel object condition
+sim_ranefs$ind_novel <- sim_ranefs$ind + 
+  new_data |> filter(Object == "novel", Context == "ind") |> pull(pred)
+
+# Individual birds, control object condition
+sim_ranefs$ind_control <- sim_ranefs$ind + 
+  new_data |> filter(Object == "control", Context == "ind") |> pull(pred)
+
+# Group birds, novel object condition
+sim_ranefs$group_novel <- sim_ranefs$ind + 
+  new_data |> filter(Object == "novel", Context == "group") |> pull(pred)
+
+# Group birds, control object condition
+sim_ranefs$group_control <- sim_ranefs$ind + 
+  new_data |> filter(Object == "control", Context == "group") |> pull(pred)
+
+# Add an ID column to simulate the bird IDs
+sim_ranefs$id <- seq_len(n_birds)
+
+# Reshape the data into long format for easier plotting and analysis
+plot_data <- sim_ranefs |> pivot_longer(
+  cols = c("ind_novel", "ind_control", "group_novel", "group_control"),  # Columns to pivot
+  names_sep = "_", 
+  names_to = c("cont", "obj"),  # "cont" refers to context, "obj" refers to object type
+  values_to = "pred"  # Pivoted values go into the "pred" column
+)
+
+# Defined the function for back-transforming log above
+
+# Apply back-transformation to the predictions
+plot_data$pred_back <- back_transform_log(plot_data$pred)
+
+# Replace any NA values in back-transformed predictions with the maximum latency
+# This step ensures that all birds have valid back-transformed latency values
+plot_data$pred_back[is.na(plot_data$pred_back)] <- max(plot_data$pred_back, na.rm = TRUE)
+
+# Plot the distributions of the Box-Cox transformed random effects
+densityplot(~ pred | obj, groups = cont, data = plot_data, auto.key = TRUE,
+            main = "Box-Cox Transformed Random Effects Distributions", plot.points = FALSE)
+
+# Plot the distributions of the back-transformed random effects
+densityplot(~ pred_back | obj, groups = cont, data = plot_data, auto.key = TRUE,
+            main = "Back-Transformed Random Effects Distributions", 
+            xlim = c(-1, 10), plot.points = FALSE)
+
+# Reshape the data back to wide format to calculate covariance and correlation
+cor_data <- plot_data |> pivot_wider(
+  id_cols = id, 
+  names_from = c(cont, obj), 
+  values_from = pred_back
+)
+
+# Calculate covariance and correlation matrices for novel trials
+cov(cor_data[, c(2, 4)])  # Covariance between individual and group in novel condition
+cor(cor_data[, c(2, 4)])  # Correlation between individual and group in novel condition
+sd(cor_data$ind_novel)    # Standard deviation in the individual condition (novel)
+sd(cor_data$group_novel)  # Standard deviation in the group condition (novel)
+
+# Calculate covariance and correlation matrices for control trials
+cov(cor_data[, c(3, 5)])  # Covariance between individual and group in control condition
+cor(cor_data[, c(3, 5)])  # Correlation between individual and group in control condition
+sd(cor_data$ind_control)  # Standard deviation in the individual condition (control)
+sd(cor_data$group_control) # Standard deviation in the group condition (control)
+
+# Test difference in variance
+# Full model: Separate random effects for individual and group conditions
+zoi_model_log_full <- lmer(
+  Log_Zoi_duration ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+  (-1 + ind_dummy + group_dummy | Bird_ID),
+  data = data
+)
+
+# Reduced model: Single random effect for Bird_ID
+zoi_model_log_reduced <- lmer(
+  Log_Zoi_duration ~ Object_contrast * Context_contrast + Trial +
+  (1 | Bird_ID),
+  data = data
+)
+
+# Compare the models using a likelihood ratio test (LRT)
+anova(zoi_model_log_full, zoi_model_log_reduced)
+
+```
+
+Now fit a multivariate model:
+
+```{r multivariate model 1}
+# make data long:
+data_long <- data %>%
+  pivot_longer(
+    cols = c(Latency_to_enter, Latency_to_Eat),
+    names_to = "Behaviour_Type",
+    values_to = "Latency"
+  )
+data_long <- data_long %>%
+  mutate(
+    eat_vs_leave_contrast = case_when(
+      Behaviour_Type == "Latency_to_enter" ~ -0.5,
+      Behaviour_Type == "Latency_to_Eat" ~ 0.5
+    )
+  )
+
+# fir full model
+latency_model <- lmer(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial + sex_contrast +
+                    (1 | NestID) +
+                    (- 1 + group_dummy | GroupID) + 
+                    (- 1 + ind_dummy + group_dummy + eat_vs_leave_contrast | Bird_ID), 
+                  data = data_long)
+
+summary(latency_model)
+
+```
+
+Same as before, reduce the model:
+
+```{r multivariate model 2, fig.width=10, fig.height=10, dpi=300}
+
+latency_model2 <- lmer(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + Trial + sex_contrast +
+                    (- 1 + ind_dummy + group_dummy + eat_vs_leave_contrast | Bird_ID), 
+                  data = data_long)
+
+summary(latency_model2)
+check_model(latency_model2)
+
+```
+
+Same as before, boxcox transfrom the data:
+
+```{r multivariate model 3, fig.width=10, fig.height=10, dpi=300}
+
+boxcox_transform <- boxcox(lm(Latency ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + 
+                                 Trial + sex_contrast, data = data_long))
+
+# Identify the best lambda value
+best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
+
+if (best_lambda == 0) {
+  data_long$Latency_trans <- log(data_long$Latency)
+} else {
+  data_long$Latency_trans <- (data_long$Latency^best_lambda - 1) / best_lambda
+}
+
+
+
+latency_model3_boxcox <- lmer(
+  Latency_trans ~ eat_vs_leave_contrast * Object_contrast * Context_contrast + 
+    Trial + sex_contrast + 
+    (- 1 + ind_dummy + group_dummy + eat_vs_leave_contrast | Bird_ID), 
+  data = data_long
+)
+
+
+summary(latency_model3_boxcox)
+check_model(latency_model3_boxcox)
+
+
+```
+
+There are still issues with the ranef structure, simpligy the model:
+
+```{r multivariate model 4, fig.width=10, fig.height=10, dpi=300}
+latency_model3_boxcox_reduced <- lmer(Latency_trans ~ eat_vs_leave_contrast * Object_contrast * Context_contrast +
+                                       Trial + sex_contrast +
+                                       (-1 + ind_dummy + group_dummy  | Bird_ID), 
+                                     data = data_long)
+
+# Summary of the updated model
+summary(latency_model3_boxcox_reduced)
+
+# Check the model diagnostics
+check_model(latency_model3_boxcox_reduced)
+```
+
+I would say the multivariate model supports what the we found earlier. 3-way interaction is nonsign, so lets remove it:
+
+```{r multivariate model 5, fig.width=10, fig.height=10, dpi=300}
+latency_model3_boxcox_reduced_2 <- lmer(
+  Latency_trans ~ eat_vs_leave_contrast * Object_contrast + 
+                  eat_vs_leave_contrast * Context_contrast + 
+                  Object_contrast * Context_contrast + 
+                  Trial + 
+                  sex_contrast +
+                  (-1 + ind_dummy + group_dummy | Bird_ID), 
+  data = data_long
+)
+
+# Summary of the updated model
+summary(latency_model3_boxcox_reduced_2)
+
+# Check the model diagnostics
+check_model(latency_model3_boxcox_reduced_2)
+```
+
+############################################################################## 
+
+############################################################################## 
+
+```{r Descriptives}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(ggsignif)
+library(patchwork)
+
+# Calculate summary stats for plotting (mean and standard error)
+calculate_summary <- function(data, var) {
+  data %>%
+    group_by(Context, Object) %>%
+    summarise(mean_value = mean({{var}}, na.rm = TRUE),
+              se_value = sd({{var}}, na.rm = TRUE) / sqrt(n()),
+              .groups = "drop")
+}
+
+# Summarise data for each variable
+summary_latency_enter <- data %>%
+  group_by(Context) %>%
+  summarise(mean_value = mean(Latency_to_enter, na.rm = TRUE),
+            se_value = sd(Latency_to_enter, na.rm = TRUE) / sqrt(n()))
+
+summary_latency_eat <- calculate_summary(data, Latency_to_Eat)
+summary_time_ZOI <- calculate_summary(data, Zoi_duration)
+
+# Custom function to reorder factor levels for plots
+reorder_levels <- function(data) {
+  data <- data %>%
+    mutate(Context_Object = interaction(Context, Object, sep = "-")) %>%
+    mutate(Context_Object = factor(Context_Object, 
+                                   levels = c("individual-control", "individual-novel", 
+                                              "group-control", "group-novel")))
+  return(data)
+}
+
+# Reorder levels for the interaction-based data
+summary_latency_eat <- reorder_levels(summary_latency_eat)
+summary_time_ZOI <- reorder_levels(summary_time_ZOI)
+
+# Function to plot Latency to Enter (no Object, Context only)
+plot_latency_enter <- ggplot(summary_latency_enter, aes(x = Context, y = mean_value, fill = Context)) + 
+  geom_bar(stat = "identity", position = position_dodge(), width = 0.6) + 
+  geom_errorbar(aes(ymin = mean_value - se_value, ymax = mean_value + se_value), 
+                width = 0.2, position = position_dodge(0.6)) + 
+  labs(x = "", y = "Mean latency (s)", title = "Latency to enter") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, , size = 12), 
+        plot.title = element_text(hjust = 0.5, size = 14), 
+        axis.title = element_text(size = 12),
+        legend.position = "none") + 
+  scale_fill_manual(values = c("group" = "goldenrod", "individual" = "lightblue")) 
+
+# Function to plot variables with interaction (Latency to Eat, ZOI Duration) and double brackets
+plot_variable_with_double_brackets <- function(data, var_name, y_label) {
+  ggplot(data, aes(x = Context_Object, y = mean_value, fill = Object)) + 
+    geom_bar(stat = "identity", position = position_dodge(), width = 0.6) + 
+    geom_errorbar(aes(ymin = mean_value - se_value, ymax = mean_value + se_value), 
+                  width = 0.2, position = position_dodge(0.6)) + 
+    labs(x = "", y = y_label, title = var_name) + 
+    theme_classic() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12), 
+          plot.title = element_text(hjust = 0.5, size = 14), 
+          axis.title = element_text(size = 12),
+          legend.position = "none") + 
+    scale_fill_manual(values = c("novel" = "goldenrod", "control" = "lightblue"))
+}
+
+# Plot Latency to Eat
+plot_latency_eat <- plot_variable_with_double_brackets(summary_latency_eat, "Latency to eat", "Mean latency (s)")
+
+# Plot Time Spent in ZOI
+plot_time_ZOI <- plot_variable_with_double_brackets(summary_time_ZOI, "ZOI duration", "mean Time (s)")
+
+# Combine plots using patchwork
+combined_plot <- (plot_latency_enter | plot_latency_eat | plot_time_ZOI) + 
+  plot_layout(guides = 'collect') + 
+  plot_annotation(tag_levels = 'A') &
+  theme(plot.tag.position = "bottom")
+
+# Print the combined plot
+print(combined_plot)
+
+
+
+```
+
+# Plot the Object x Context interaction
+
+```{r Plot of descriptives}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
+# Calculate summary stats for plotting (mean and standard error)
+calculate_summary <- function(data, var) {
+  data %>%
+    group_by(Context, Object) %>%
+    summarise(mean_value = mean({{var}}, na.rm = TRUE),
+              se_value = sd({{var}}, na.rm = TRUE) / sqrt(n()),
+              .groups = "drop")
+}
+
+# Summarise data for each variable
+summary_latency_enter <- data %>%
+  group_by(Context) %>%
+  summarise(mean_value = mean(Latency_to_enter, na.rm = TRUE),
+            se_value = sd(Latency_to_enter, na.rm = TRUE) / sqrt(n()))
+
+summary_latency_eat <- calculate_summary(data, Latency_to_Eat)
+summary_time_ZOI <- calculate_summary(data, Zoi_duration)
+
+# Custom function to reorder factor levels for plots
+reorder_levels <- function(data) {
+  data <- data %>%
+    mutate(Context_Object = interaction(Context, Object, sep = "-")) %>%
+    mutate(Context_Object = factor(Context_Object, 
+                                   levels = c("individual-control", "individual-novel", 
+                                              "group-control", "group-novel")))
+  return(data)
+}
+
+# Reorder levels for the interaction-based data
+summary_latency_eat <- reorder_levels(summary_latency_eat)
+summary_time_ZOI <- reorder_levels(summary_time_ZOI)
+
+# Function to plot Latency to Enter (no Object, Context only)
+plot_latency_enter <- ggplot(summary_latency_enter, aes(x = Context, y = mean_value, fill = Context)) + 
+  geom_bar(stat = "identity", position = position_dodge(), width = 0.6) + 
+  geom_errorbar(aes(ymin = mean_value - se_value, ymax = mean_value + se_value), 
+                width = 0.2, position = position_dodge(0.6)) + 
+  labs(x = "", y = "Mean Latency (s)", title = "Latency to Enter") + 
+  theme_classic() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10), 
+        plot.title = element_text(hjust = 0.5, size = 14), 
+        axis.title = element_text(size = 12),
+        legend.position = "none") + 
+  scale_fill_manual(values = c("group" = "goldenrod", "individual" = "lightblue"))
+
+# Function to plot variables with interaction (Latency to Eat, ZOI Duration)
+plot_variable_without_signif <- function(data, var_name, y_label) {
+  ggplot(data, aes(x = Context_Object, y = mean_value, fill = Object)) + 
+    geom_bar(stat = "identity", position = position_dodge(), width = 0.6) + 
+    geom_errorbar(aes(ymin = mean_value - se_value, ymax = mean_value + se_value), 
+                  width = 0.2, position = position_dodge(0.6)) + 
+    labs(x = "", y = y_label, title = var_name) + 
+    theme_classic() + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10), 
+          plot.title = element_text(hjust = 0.5, size = 14), 
+          axis.title = element_text(size = 12),
+          legend.position = "none") + 
+    scale_fill_manual(values = c("novel" = "goldenrod", "control" = "lightblue"))
+}
+
+# Plot Latency to Eat
+plot_latency_eat <- plot_variable_without_signif(summary_latency_eat, "Latency to Eat", "Mean Latency (s)")
+
+# Plot Time Spent in ZOI
+plot_time_ZOI <- plot_variable_without_signif(summary_time_ZOI, "ZOI Duration", "Mean Time (s)")
+
+# Combine plots using patchwork
+combined_plot <- (plot_latency_enter | plot_latency_eat | plot_time_ZOI) + 
+  plot_layout(guides = 'collect') + 
+  plot_annotation(tag_levels = 'A') &
+  theme(plot.tag.position = "bottom")
+
+# Print the combined plot
+print(combined_plot)
+
+
+
+
+```
