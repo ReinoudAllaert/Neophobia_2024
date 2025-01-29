@@ -140,7 +140,7 @@ Given the non-normality of the data we tried to fit 1) DV as is, 2) log(DV), 3) 
 The full model as described in the RR, includes `Object_contrast`, `Context_contrast`, and `Trial`, and a complex random effect structure:
 
 ```{r Enter model 1, fig.width=10, fig.height=10, dpi=300}
-enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+enter_model <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + Object_contrast * sex_contrast +
                 (1 | NestID) + 
                 (-1 + group_dummy | GroupID) + 
                 (-1 +  ind_dummy + group_dummy | Bird_ID), 
@@ -156,7 +156,7 @@ check_model(enter_model)
 The random effect structure seems to be too complex for the amount of data. However, the variance for the `(Intercept)` under `NestID` is `0` and the variance for `group_dummy` under `GroupID` is `0`. This suggests that both nest as differences between groups contribute minimally to the variance in the outcome model. Let's drop both effects.
 
 ```{r Enter model 2, fig.width=10, fig.height=10, dpi=300}
-enter_model2 <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+enter_model2 <- lmer(Latency_to_enter ~ Object_contrast * Context_contrast + Trial + Object_contrast * sex_contrast +
                 (-1 +  ind_dummy + group_dummy | Bird_ID), 
               data = data)
 
@@ -164,7 +164,7 @@ summary(enter_model2)
 check_model(enter_model2)
 ```
 
-Seems like the interaction between object and context is non-significant, let's drop it. Given the non-normal distribution, let's logtransform the data as well:
+Seems like the interaction between object and context, and onject ant sex is non-significant, let's drop it. Given the non-normal distribution, let's logtransform the data as well:
 
 ```{r Enter model 3, fig.width=10, fig.height=10, dpi=300}
 enter_model3 <- lmer(log(Latency_to_enter) ~ Object_contrast + Context_contrast + Trial + sex_contrast +
@@ -410,7 +410,7 @@ A similar model is built for `Latency_to_Eat`, again incorporating interaction t
 
 ```{r Eat model 1, fig.width=10, fig.height=10, dpi=300}
 # Given that the distribution of DV is similar to that of the enter model, we log transformed .
-eat_model <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+eat_model <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial +  Object_contrast * sex_contrast +
                     (1 | NestID) + 
                    (- 1 + group_dummy | GroupID) + 
                    (- 1 + ind_dummy + group_dummy | Bird_ID),  
@@ -423,7 +423,7 @@ Similarly, the variance for the `(Intercept)` under `NestID` is `0` and the vari
 
 ```{r Eat model 2, fig.width=10, fig.height=10, dpi=300}
 
-eat_model2 <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+eat_model2 <- lmer(log(Latency_to_Eat) ~ Object_contrast * Context_contrast + Trial +  Object_contrast * sex_contrast +
                    (- 1 + ind_dummy + group_dummy | Bird_ID),  
                  data = data)
 summary(eat_model2)
@@ -435,21 +435,21 @@ There are still some issues with the normality. Let's try the same boxcox tranfo
 
 ```{r Eat model 3, fig.width=10, fig.height=10, dpi=300}
 
-boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial + sex_contrast, data = data))
+boxcox_transform <- boxcox(lm(Latency_to_Eat ~ Object_contrast * Context_contrast + Trial +  Object_contrast * sex_contrast, data = data))
 best_lambda <- boxcox_transform$x[which.max(boxcox_transform$y)]
 best_lambda
 data$Latency_to_eat_trans <- (data$Latency_to_Eat^best_lambda - 1) / best_lambda
 
 eat_model4_boxcox <- lmer(Latency_to_eat_trans ~ Object_contrast * 
-                              Context_contrast + Trial + sex_contrast +
+                              Context_contrast + Trial +  Object_contrast * sex_contrast +
                             (-1 + ind_dummy + group_dummy | Bird_ID), 
                             data = data)
 
 summary(eat_model4_boxcox)
 check_model(eat_model4_boxcox)
 
-# Given the correlation of 1 and the fact that we still get a singular fit, try to reduce the model
-eat_model_reduced <- lmer(Latency_to_eat_trans ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+# Given the correlation of 1 and the fact that we still get a singular fit, try to reduce the model.
+eat_model_reduced <- lmer(Latency_to_eat_trans ~ Object_contrast * Context_contrast + Trial +  Object_contrast * sex_contrast +
                               (1 | Bird_ID), data = data)
 summary(eat_model_reduced)
 
@@ -507,7 +507,7 @@ print(emms_interaction_eat)
 ### 3) Time spent in the zone of interest
 
 ```{r ZOI model 2, fig.width=10, fig.height=10, dpi=300}
-zoi_model2 <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+zoi_model2 <- lmer(Zoi_duration ~ Object_contrast * Context_contrast + Trial +  Object_contrast * sex_contrast +
                 (-1 +  ind_dummy + group_dummy | Bird_ID), 
               data = data)
 
@@ -524,7 +524,7 @@ data$Log_Zoi_duration <- log(data$Zoi_duration + 1)
 
 # Fit a linear mixed model on the transformed data
 zoi_model_log <- lmer(
-  Log_Zoi_duration ~ Object_contrast * Context_contrast + Trial + sex_contrast +
+  Log_Zoi_duration ~ Object_contrast * Context_contrast + Trial +  Object_contrast * sex_contrast +
     (-1 + ind_dummy + group_dummy | Bird_ID), 
   data = data
 )
@@ -557,15 +557,24 @@ emms_interaction_zoi <- emmeans(
   type = "response",
   tran = log # Return values on the original (back-transformed) scale
 )
-
-
-
 # Apply the back-transform function to the emmeans results
 predicted_zoi_interaction <- summary(emms_interaction_zoi)
 predicted_zoi_interaction$backtransformed_response <- back_transform_log(predicted_zoi_interaction$emmean)
 
+
+emms_interactionsex <- emmeans(zoi_model_log, 
+                specs = c("Object_contrast", "sex_contrast"), 
+                at = list(Object_contrast = c(-0.5, 0.5), 
+                          sex_contrast = c(-0.5, 0.5)),
+                type = "response")
+
+
+# Apply the back-transform function to the emmeans results
+predicted_sex_interaction <- summary(emms_interactionsex)
+predicted_sex_interaction$backtransformed_response <- back_transform_log(predicted_sex_interaction$emmean)
+
 # Print the back-transformed marginal means
-print(predicted_zoi_interaction)
+print(predicted_sex_interaction)
 
 emms_trial_baseline_zoi <- emmeans(
   zoi_model_log,         # The log-transformed ZOI model
@@ -705,17 +714,18 @@ sd(cor_data$group_control) # Standard deviation in the group condition (control)
 # Test difference in variance
 # Full model: Separate random effects for individual and group conditions
 zoi_model_log_full <- lmer(
-  Log_Zoi_duration ~ Object_contrast * Context_contrast + Trial + sex_contrast +
-  (-1 + ind_dummy + group_dummy | Bird_ID),
+  Log_Zoi_duration ~ Object_contrast * Context_contrast + Trial +  Object_contrast * sex_contrast +
+    (-1 + ind_dummy + group_dummy | Bird_ID), 
   data = data
 )
 
 # Reduced model: Single random effect for Bird_ID
 zoi_model_log_reduced <- lmer(
-  Log_Zoi_duration ~ Object_contrast * Context_contrast + Trial +
+  Log_Zoi_duration ~ Object_contrast * Context_contrast + Trial +  Object_contrast * sex_contrast +
   (1 | Bird_ID),
   data = data
 )
+
 
 # Compare the models using a likelihood ratio test (LRT)
 anova(zoi_model_log_full, zoi_model_log_reduced)
